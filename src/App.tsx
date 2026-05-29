@@ -13,7 +13,13 @@ export default function App() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'score' | 'journal'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'score' | 'journal'>(() => {
+    return (localStorage.getItem('activeTab') as any) || 'dashboard';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('activeTab', activeTab);
+  }, [activeTab]);
 
   const fetchDashboard = async () => {
     setLoading(true);

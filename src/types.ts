@@ -18,7 +18,7 @@ export interface EtfInfo {
   premiumPct: number;
   premiumScore: number;
   totalScore: number;
-  recommendation: 'STRONG BUY' | 'BUY' | 'HOLD' | 'REDUCE' | 'CLEAR' | 'VETO - AVOID';
+  recommendation: string;
 }
 
 export interface ChartDataPoint {
