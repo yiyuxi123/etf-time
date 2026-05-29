@@ -4,10 +4,9 @@ import { createServer as createViteServer } from "vite";
 import { DashboardData, ChartDataPoint, EtfInfo } from "./src/types";
 
 // Properly get YahooFinance
-import defaultExport from 'yahoo-finance2';
-// @ts-ignore
-const YahooFinanceClass = defaultExport.default ? defaultExport.default : defaultExport;
-const yfInstance = new YahooFinanceClass({ suppressNotices: ['yahooSurvey', 'ripHistorical'] });
+import YahooFinance from 'yahoo-finance2';
+
+const yf = new YahooFinance();
 
 async function startServer() {
   const app = express();
@@ -24,7 +23,7 @@ async function startServer() {
       if (newsCache.data && now - newsCache.timestamp < CACHE_TTL) {
         return res.json(newsCache.data);
       }
-      const result = await yfInstance.search('QQQ', { newsCount: 6 });
+      const result = await yf.search('QQQ', { newsCount: 6 });
       newsCache.data = result.news || [];
       newsCache.timestamp = now;
       res.json(newsCache.data);
@@ -45,8 +44,8 @@ async function startServer() {
       
       // 1. Fetch VIX and QQQ (as Nasdaq 100 proxy)
       const [vixQuote, qqqQuote] = await Promise.all([
-        yfInstance.quote('^VIX'),
-        yfInstance.quote('QQQ')
+        yf.quote('^VIX'),
+        yf.quote('QQQ')
       ]);
 
       const vixValue = vixQuote.regularMarketPrice || 15;
@@ -151,8 +150,8 @@ async function startServer() {
       period1.setFullYear(period1.getFullYear() - 1);
       
       const [historyRes, vixHistoryRes] = await Promise.all([
-        yfInstance.chart('QQQ', { period1, interval: '1d' }),
-        yfInstance.chart('^VIX', { period1, interval: '1d' })
+        yf.chart('QQQ', { period1, interval: '1d' }),
+        yf.chart('^VIX', { period1, interval: '1d' })
       ]);
 
       const history = historyRes.quotes || [];

@@ -1,9 +1,7 @@
-import defaultExport from 'yahoo-finance2';
+import YahooFinance from 'yahoo-finance2';
 import { DashboardData, ChartDataPoint, EtfInfo } from '../src/types';
 
-// @ts-ignore
-const YahooFinanceClass = defaultExport.default ? defaultExport.default : defaultExport;
-const yfInstance = new YahooFinanceClass({ suppressNotices: ['yahooSurvey', 'ripHistorical'] });
+const yf = new (YahooFinance as any)();
 
 export default async function handler(req: any, res: any) {
   try {
@@ -11,8 +9,8 @@ export default async function handler(req: any, res: any) {
     
     // 1. Fetch VIX and QQQ (as Nasdaq 100 proxy)
     const [vixQuote, qqqQuote] = await Promise.all([
-      yfInstance.quote('^VIX'),
-      yfInstance.quote('QQQ')
+      yf.quote('^VIX'),
+      yf.quote('QQQ')
     ]);
 
     const vixValue = vixQuote.regularMarketPrice || 15;
@@ -114,8 +112,8 @@ export default async function handler(req: any, res: any) {
     period1.setFullYear(period1.getFullYear() - 1);
     
     const [historyRes, vixHistoryRes] = await Promise.all([
-      yfInstance.chart('QQQ', { period1, interval: '1d' }),
-      yfInstance.chart('^VIX', { period1, interval: '1d' })
+      yf.chart('QQQ', { period1, interval: '1d' }),
+      yf.chart('^VIX', { period1, interval: '1d' })
     ]);
 
     const history = historyRes.quotes || [];
