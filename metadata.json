@@ -1,0 +1,6 @@
+{
+  "name": "US Stock & ETF Valuation Dashboard",
+  "description": "A quantitative dashboard and investment decision system for US stocks and domestic ETFs based on valuation, sentiment, and trend factors.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
