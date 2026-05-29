@@ -16,6 +16,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'score' | 'journal'>(() => {
     return (localStorage.getItem('activeTab') as any) || 'dashboard';
   });
+  const [activeMarketIdx, setActiveMarketIdx] = useState(0);
 
   useEffect(() => {
     localStorage.setItem('activeTab', activeTab);
@@ -28,6 +29,9 @@ export default function App() {
       const res = await fetch('/api/dashboard');
       if (!res.ok) throw new Error('Failed to fetch data');
       const json: DashboardData = await res.json();
+      if (!json.markets || !Array.isArray(json.markets)) {
+         throw new Error('Data format error');
+      }
       setData(json);
     } catch (err: any) {
       setError(err.message || 'An unknown error occurred');
@@ -92,11 +96,11 @@ export default function App() {
             </div>
             
             <div className="flex items-center gap-4">
-              {data?.qqqQuote && (
+              {data && data.markets && data.markets[activeMarketIdx] && data.markets[activeMarketIdx].quote && (
                 <div className="hidden md:flex flex-col items-end mr-4 animate-in fade-in slide-in-from-right-4 duration-500">
-                  <span className="text-xs text-slate-400 font-mono uppercase">纳斯达克100 (QQQ) 基准</span>
-                  <span className={`text-sm font-bold font-mono ${data.qqqQuote.changePct >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                    ${data.qqqQuote.price.toFixed(2)} {data.qqqQuote.changePct >= 0 ? '+' : ''}{data.qqqQuote.changePct.toFixed(2)}%
+                  <span className="text-xs text-slate-400 font-mono uppercase">{data.markets[activeMarketIdx].name} 基准</span>
+                  <span className={`text-sm font-bold font-mono ${data.markets[activeMarketIdx].quote.changePct >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                    ${data.markets[activeMarketIdx].quote.price.toFixed(2)} {data.markets[activeMarketIdx].quote.changePct >= 0 ? '+' : ''}{data.markets[activeMarketIdx].quote.changePct.toFixed(2)}%
                   </span>
                 </div>
               )}
@@ -119,32 +123,47 @@ export default function App() {
         {/* Main Content */}
         <main className="max-w-6xl mx-auto px-6 mt-8">
           <TabNav activeTab={activeTab} setActiveTab={setActiveTab} />
-          
-          {activeTab === 'dashboard' && (
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              
-              {/* Top Section: Score & Breakdown */}
-              <div className="md:col-span-4 h-full flex">
-                {data && <ScoreCard score={data.marketScore} />}
-              </div>
-              
-              <div className="md:col-span-8 h-full flex">
-                {data && <MarketFactors breakdown={data.breakdown} />}
+
+          {activeTab === 'dashboard' && data && data.markets && data.markets[activeMarketIdx] && (
+            <>
+              {/* Market Selection Tabs */}
+              <div className="flex gap-2 mb-6">
+                {data.markets.map((m, idx) => (
+                    <button
+                        key={m.id}
+                        onClick={() => setActiveMarketIdx(idx)}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeMarketIdx === idx ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-white/5 text-slate-400 border border-white/10 hover:bg-white/10 hover:text-slate-200'}`}
+                    >
+                        {m.name}
+                    </button>
+                ))}
               </div>
 
-              {/* Middle Section: Chart */}
-              <div className="md:col-span-12">
-                {data && <TrendChart data={data.chartData} />}
-              </div>
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                
+                {/* Top Section: Score & Breakdown */}
+                <div className="md:col-span-4 h-full flex">
+                  <ScoreCard score={data.markets[activeMarketIdx].marketScore} />
+                </div>
+                
+                <div className="md:col-span-8 h-full flex">
+                  <MarketFactors breakdown={data.markets[activeMarketIdx].breakdown} />
+                </div>
 
-              {/* Bottom Section: ETF Table */}
-              <div className="md:col-span-12">
-                 {data && <EtfTable etfs={data.etfs} />}
+                {/* Middle Section: Chart */}
+                <div className="md:col-span-12">
+                  <TrendChart data={data.markets[activeMarketIdx].chartData} />
+                </div>
+
+                {/* Bottom Section: ETF Table */}
+                <div className="md:col-span-12">
+                   <EtfTable etfs={data.markets[activeMarketIdx].etfs} />
+                </div>
               </div>
-            </div>
+            </>
           )}
 
-          {activeTab === 'journal' && <TradingJournal etfs={data?.etfs || []} />}
+          {activeTab === 'journal' && <TradingJournal etfs={data?.markets?.[activeMarketIdx]?.etfs || []} />}
           
           {activeTab === 'score' && <ScoreReference />}
         </main>

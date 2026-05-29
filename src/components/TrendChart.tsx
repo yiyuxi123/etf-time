@@ -46,13 +46,17 @@ const MiniChart = ({ title, desc, dataKey, color, data, formatter }: any) => (
 );
 
 export const TrendChart: React.FC<TrendChartProps> = ({ data }) => {
+  const hasVix = data.length > 0 && data[0].vix !== undefined;
+  const hasPe = data.length > 0 && data[0].pe !== undefined;
+  const hasTrend = data.length > 0 && data[0].trend !== undefined;
+
   return (
     <div className="space-y-4">
       <div className="bg-white/5 border border-white/10 rounded-3xl p-6 flex flex-col h-[350px]">
         <div className="mb-6 flex justify-between items-end">
           <div>
-            <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest">纳斯达克100指数近期走势 (1Y)</h2>
-            <p className="text-[10px] text-slate-500 italic mt-1">美股核心底仓：基于影子资产 QQQ 每日收盘价</p>
+            <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest">基准资产走势 (1Y)</h2>
+            <p className="text-[10px] text-slate-500 italic mt-1">基准资产每日收盘价</p>
           </div>
         </div>
         
@@ -100,30 +104,36 @@ export const TrendChart: React.FC<TrendChartProps> = ({ data }) => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <MiniChart 
-          title="市盈率 PE 追踪" 
-          desc="预估动量市盈率 (越高越贵)" 
-          dataKey="pe" 
-          color="#38bdf8" 
-          data={data} 
-          formatter={(v: number) => v.toFixed(1)} 
-        />
-        <MiniChart 
-          title="VIX 恐慌指数追踪" 
-          desc="高恐慌代表情绪底 (建仓良机)" 
-          dataKey="vix" 
-          color="#a855f7" 
-          data={data} 
-          formatter={(v: number) => v.toFixed(1)}
-        />
-        <MiniChart 
-          title="趋势乖离率 %" 
-          desc="由于破位而产生的机会/风险" 
-          dataKey="trend" 
-          color="#fb923c" 
-          data={data} 
-          formatter={(v: number) => `${v > 0 ? '+' : ''}${v.toFixed(1)}%`}
-        />
+        {hasPe && (
+            <MiniChart 
+              title="市盈率 PE 追踪" 
+              desc="预估动量市盈率 (越高越贵)" 
+              dataKey="pe" 
+              color="#38bdf8" 
+              data={data} 
+              formatter={(v: number) => typeof v === 'number' ? v.toFixed(1) : v} 
+            />
+        )}
+        {hasVix && (
+            <MiniChart 
+              title="全球恐慌指数追踪" 
+              desc="VIX" 
+              dataKey="vix" 
+              color="#a855f7" 
+              data={data} 
+              formatter={(v: number) => typeof v === 'number' ? v.toFixed(1) : v}
+            />
+        )}
+        {hasTrend && (
+            <MiniChart 
+              title="趋势乖离率 %" 
+              desc="均线偏离度" 
+              dataKey="trend" 
+              color="#fb923c" 
+              data={data} 
+              formatter={(v: number) => typeof v === 'number' ? `${v > 0 ? '+' : ''}${v.toFixed(1)}%` : v}
+            />
+        )}
       </div>
     </div>
   );

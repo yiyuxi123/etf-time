@@ -1,13 +1,12 @@
 export interface FactorBreakdown {
+  name: string;
   value: number;
   score: number;
   max: number;
 }
 
 export interface MetricBreakdown {
-  pe: FactorBreakdown;
-  vix: FactorBreakdown;
-  trend: FactorBreakdown;
+  [key: string]: FactorBreakdown;
 }
 
 export interface EtfInfo {
@@ -30,14 +29,20 @@ export interface ChartDataPoint {
   trend?: number;
 }
 
-export interface DashboardData {
+export interface MarketData {
+  id: string;
+  name: string;
   marketScore: number;
-  qqqQuote?: {
+  quote?: {
     price: number;
     changePct: number;
   };
-  breakdown: MetricBreakdown;
+  breakdown: FactorBreakdown[];
   etfs: EtfInfo[];
   chartData: ChartDataPoint[];
+}
+
+export interface DashboardData {
+  markets: MarketData[];
   lastUpdated: string;
 }
