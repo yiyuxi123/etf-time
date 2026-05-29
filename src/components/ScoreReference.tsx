@@ -1,5 +1,5 @@
 import React from 'react';
-import { Target, Info, ShieldAlert, BarChart3, TrendingUp, AlertTriangle } from 'lucide-react';
+import { Target, Info, ShieldAlert, BarChart3, TrendingUp, AlertTriangle, Cpu } from 'lucide-react';
 
 export default function ScoreReference() {
   return (
@@ -122,6 +122,42 @@ export default function ScoreReference() {
         </div>
       </div>
       
+      <div className="bg-white/5 border border-white/10 rounded-3xl p-8 mb-6">
+        <h2 className="text-xl font-bold text-white mb-6 flex items-center">
+          <Cpu className="mr-2 text-indigo-400" />
+          系统科学性评估与受众定位
+        </h2>
+        
+        <p className="text-slate-400 text-sm mb-6 leading-relaxed">
+          本系统构建逻辑基于成熟的<strong>多因子量化模型 (Multi-Factor Model)</strong> 与<strong>宏观大类资产配置 (Macro Asset Allocation)</strong>，规避了大量散户常见的“追涨杀跌”和“单一资产满仓”的情绪化陷阱。
+        </p>
+
+        <div className="space-y-6">
+          <div>
+            <h3 className="text-slate-200 font-bold mb-2 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full"></span>
+              系统相当于什么水平的投资者？
+            </h3>
+            <p className="text-sm text-slate-400 leading-relaxed pl-3 border-l-2 border-indigo-500/20">
+              相当于拥有 <strong>5 - 10 年交易经验的机构级宏观策略研究员</strong>或 <strong>FOF (基金中基金) 基金经理</strong>。本系统不追求一天翻倍的短线暴利，而是着眼于底层逻辑、分散投资与盈亏比的长期胜率。
+            </p>
+          </div>
+
+          <div>
+            <h3 className="text-slate-200 font-bold mb-2 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
+              系统的科学性体现在哪里？
+            </h3>
+            <ul className="list-none text-sm text-slate-400 space-y-3 pl-3 border-l-2 border-emerald-500/20">
+              <li><strong>遵循市场常识防过拟合：</strong> 对 PE（估值）、VIX（情绪）、RSI（动能）等经典量化指标进行宽频带（Band）线性评分截断（Clamp），有效防止对历史数据的重度过拟合。</li>
+              <li><strong>克服人性弱点（左侧）：</strong> 运用反脆弱逻辑。在美股大幅回撤（危机阿尔法）或 A股/黄金 RSI 处于极度超卖区时逆向给予高分，实现“别人恐惧我贪婪”。</li>
+              <li><strong>顺应市场趋势（右侧）：</strong> 结合 200 日与 50 日均线，在主要阻力位形成趋势共振时发力，避免在单边熊市中无脑接飞刀。</li>
+              <li><strong>大类资产非相关性：</strong> 不死磕单一市场（比如只炒 A 股）。在防守型债券看重“低波动率”，在进攻型美股看重“估值与回撤的性价比”，因地制宜。</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
       <div className="bg-white/5 border border-white/10 rounded-3xl p-8 space-y-8">
         <h2 className="text-xl font-bold text-white mb-6 flex items-center">
           <Info className="mr-2 text-purple-400" />
