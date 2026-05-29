@@ -18,6 +18,7 @@ export interface EtfInfo {
   premiumScore: number;
   totalScore: number;
   recommendation: string;
+  fee?: string;
 }
 
 export interface ChartDataPoint {
@@ -27,6 +28,9 @@ export interface ChartDataPoint {
   pe?: number;
   vix?: number;
   trend?: number;
+  rsi?: number;
+  drawdown?: number;
+  volatility?: number;
 }
 
 export interface MarketData {

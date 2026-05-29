@@ -22,6 +22,7 @@ export const EtfTable: React.FC<EtfTableProps> = ({ etfs }) => {
               <th className="pb-3 pl-2 uppercase">代码/名称</th>
               <th className="pb-3 text-right">最新价格</th>
               <th className="pb-3 text-right hidden sm:table-cell" title="基金公司公布的最新官方净值(通常为T-1或T-2日)">T-1 最新净值</th>
+              <th className="pb-3 text-right hidden md:table-cell">管理费率</th>
               <th className="pb-3 text-right">实时溢价率</th>
               <th className="pb-3 text-right hidden sm:table-cell">溢价得分 (满分20)</th>
               <th className="pb-3 text-right pr-2">系统建议状态 (总分=80+20)</th>
@@ -43,6 +44,9 @@ export const EtfTable: React.FC<EtfTableProps> = ({ etfs }) => {
                   </td>
                   <td className="py-4 text-right text-slate-400 hidden sm:table-cell">
                     {etf.estimatedIopv.toFixed(3)}
+                  </td>
+                  <td className="py-4 text-right text-slate-400 hidden md:table-cell text-xs">
+                    {etf.fee || '--'}
                   </td>
                   <td className={cn("py-4 text-right font-bold", isVeto ? "text-red-500" : isDiscount ? "text-emerald-400" : "text-yellow-500")}>
                     {etf.premiumPct > 0 ? '+' : ''}{etf.premiumPct.toFixed(2)}%
@@ -68,7 +72,7 @@ export const EtfTable: React.FC<EtfTableProps> = ({ etfs }) => {
             
             {etfs.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-6 py-8 text-center text-sm text-slate-500">
+                <td colSpan={7} className="px-6 py-8 text-center text-sm text-slate-500">
                   暂无场内ETF数据。
                 </td>
               </tr>

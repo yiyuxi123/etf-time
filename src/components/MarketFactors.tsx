@@ -1,7 +1,7 @@
 import React from 'react';
 import { FactorBreakdown } from '../types';
 import { cn } from '../lib/utils';
-import { Activity } from 'lucide-react';
+import { Activity, Percent, ArrowUpRight, TrendingUp, ShieldAlert, Zap, Waves } from 'lucide-react';
 
 interface MarketFactorsProps {
   breakdown: FactorBreakdown[];
@@ -19,6 +19,17 @@ export const MarketFactors: React.FC<MarketFactorsProps> = ({ breakdown }) => {
     return colors[index % colors.length];
   };
 
+  const renderIcon = (name: string, className: string) => {
+    if (name.includes('PE') || name.includes('市盈率')) return <Percent size={18} className={className} />;
+    if (name.includes('VIX') || name.includes('恐慌')) return <Activity size={18} className={className} />;
+    if (name.includes('趋势') || name.includes('均线') || name.includes('乖离')) return <TrendingUp size={18} className={className} />;
+    if (name.includes('RSI') || name.includes('强弱') || name.includes('情绪')) return <Zap size={18} className={className} />;
+    if (name.includes('回撤')) return <ShieldAlert size={18} className={className} />;
+    if (name.includes('动能') || name.includes('动量')) return <ArrowUpRight size={18} className={className} />;
+    if (name.includes('波动率')) return <Waves size={18} className={className} />;
+    return <Activity size={18} className={className} />;
+  };
+
   return (
     <div className="flex flex-col p-6 bg-white/5 border border-white/10 rounded-3xl h-full w-full">
       <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">
@@ -32,7 +43,7 @@ export const MarketFactors: React.FC<MarketFactorsProps> = ({ breakdown }) => {
             <div key={f.name} className="space-y-1">
               <div className="flex justify-between text-xs">
                 <span className="text-slate-400 flex items-center gap-2">
-                  <Activity size={18} className={colors.text} /> {f.name}
+                  {renderIcon(f.name, colors.text)} {f.name}
                 </span>
                 <span className={cn("font-bold font-mono", colors.text)}>
                   {f.score} / {f.max}

@@ -166,23 +166,7 @@ export default function TradingJournal({ etfs }: { etfs: EtfInfo[] }) {
   return (
     <div className="w-full max-w-5xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
-          <div className="text-slate-400 text-[10px] mb-1 uppercase tracking-widest flex items-center">
-            <PiggyBank size={12} className="mr-1" />
-            当前总持仓
-          </div>
-          <div className="text-lg font-mono text-white">{totalShares.toLocaleString()}</div>
-        </div>
-        
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
-          <div className="text-slate-400 text-[10px] mb-1 uppercase tracking-widest flex items-center">
-            <Target size={12} className="mr-1" />
-            平均持仓成本
-          </div>
-          <div className="text-lg font-mono text-emerald-400">¥{avgCostPerShare.toFixed(3)}</div>
-        </div>
-
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
           <div className="text-slate-400 text-[10px] mb-1 uppercase tracking-widest flex items-center">
             {netRealizedPnL >= 0 ? <ArrowUpRight size={12} className="mr-1 text-emerald-400" /> : <ArrowDownRight size={12} className="mr-1 text-red-400" />}
@@ -196,7 +180,7 @@ export default function TradingJournal({ etfs }: { etfs: EtfInfo[] }) {
         <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
           <div className="text-slate-400 text-[10px] mb-1 uppercase tracking-widest flex items-center">
             {unrealizedPnL >= 0 ? <ArrowUpRight size={12} className="mr-1 text-emerald-400" /> : <ArrowDownRight size={12} className="mr-1 text-red-400" />}
-            持仓预估浮盈
+            总持仓预估浮盈
           </div>
           <div className={`text-lg font-mono ${unrealizedPnL >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
             {unrealizedPnL >= 0 ? '+' : ''}{unrealizedPnL.toFixed(2)}
@@ -217,13 +201,54 @@ export default function TradingJournal({ etfs }: { etfs: EtfInfo[] }) {
         <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
           <div className="text-slate-400 text-[10px] mb-1 uppercase tracking-widest flex items-center">
              <ArrowDownRight size={12} className="mr-1 text-yellow-500" />
-             累计损耗
+             累计摩擦损耗
           </div>
           <div className="text-lg font-mono text-yellow-500">
             ¥{totalFees.toFixed(2)}
           </div>
         </div>
       </div>
+
+      {Object.values(positions).some(p => p.shares > 0) && (
+        <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+          <h3 className="text-sm font-bold text-slate-300 uppercase tracking-widest mb-4">当前各标的持仓明细</h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead className="text-[10px] text-slate-500 uppercase border-b border-white/10">
+                <tr>
+                  <th className="pb-3 pl-2">标的</th>
+                  <th className="pb-3 text-right">持仓份额</th>
+                  <th className="pb-3 text-right">平均持仓成本</th>
+                  <th className="pb-3 text-right">最新现价</th>
+                  <th className="pb-3 text-right">持仓浮动盈亏</th>
+                </tr>
+              </thead>
+              <tbody className="text-sm font-mono divide-y divide-white/5">
+                {Object.entries(positions).filter(([_, pos]) => pos.shares > 0).map(([sym, pos]) => {
+                  const currentEtf = etfs.find(e => e.symbol === sym || e.symbol.includes(sym));
+                  const avgCost = pos.cost / pos.shares;
+                  const currentPrice = currentEtf?.price || avgCost;
+                  const unrealized = (currentPrice - avgCost) * pos.shares;
+                  return (
+                    <tr key={sym} className="hover:bg-white/5 transition-colors">
+                      <td className="py-3 pl-2 text-slate-300 font-sans">
+                        {currentEtf ? currentEtf.name : sym}
+                        <div className="text-[10px] text-slate-500 font-mono mt-0.5">{sym}</div>
+                      </td>
+                      <td className="py-3 text-right text-slate-200">{pos.shares.toLocaleString()}</td>
+                      <td className="py-3 text-right text-emerald-400">¥{avgCost.toFixed(3)}</td>
+                      <td className="py-3 text-right text-slate-300">¥{currentPrice.toFixed(3)}</td>
+                      <td className={`py-3 text-right ${unrealized >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                        {unrealized >= 0 ? '+' : ''}{unrealized.toFixed(2)}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
@@ -246,10 +271,21 @@ export default function TradingJournal({ etfs }: { etfs: EtfInfo[] }) {
             <label className="text-xs text-slate-400">标的代码</label>
             <input 
               type="text" 
+              list="etf-symbols"
               value={symbol}
-              onChange={e => setSymbol(e.target.value)}
-              className="bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500/50 w-24"
+              onChange={e => {
+                 setSymbol(e.target.value);
+                 const curr = etfs.find(etf => etf.symbol === e.target.value || etf.symbol.includes(e.target.value));
+                 if (curr && !price) setPrice(curr.price.toString());
+              }}
+              className="bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500/50 w-40"
+              placeholder="输入或选择"
             />
+            <datalist id="etf-symbols">
+              {etfs.map(etf => (
+                <option key={etf.symbol} value={etf.symbol}>{etf.name}</option>
+              ))}
+            </datalist>
           </div>
 
           <div className="flex flex-col gap-1.5 relative group">

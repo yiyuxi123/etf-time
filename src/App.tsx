@@ -152,7 +152,10 @@ export default function App() {
 
                 {/* Middle Section: Chart */}
                 <div className="md:col-span-12">
-                  <TrendChart data={data.markets[activeMarketIdx].chartData} />
+                  <TrendChart 
+                    data={data.markets[activeMarketIdx].chartData} 
+                    breakdowns={data.markets[activeMarketIdx].breakdown}
+                  />
                 </div>
 
                 {/* Bottom Section: ETF Table */}

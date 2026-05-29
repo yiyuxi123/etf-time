@@ -1,9 +1,10 @@
 import React from 'react';
-import { ChartDataPoint } from '../types';
+import { ChartDataPoint, FactorBreakdown } from '../types';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface TrendChartProps {
   data: ChartDataPoint[];
+  breakdowns?: FactorBreakdown[];
 }
 
 const MiniChart = ({ title, desc, dataKey, color, data, formatter }: any) => (
@@ -45,10 +46,15 @@ const MiniChart = ({ title, desc, dataKey, color, data, formatter }: any) => (
   </div>
 );
 
-export const TrendChart: React.FC<TrendChartProps> = ({ data }) => {
-  const hasVix = data.length > 0 && data[0].vix !== undefined;
-  const hasPe = data.length > 0 && data[0].pe !== undefined;
-  const hasTrend = data.length > 0 && data[0].trend !== undefined;
+export const TrendChart: React.FC<TrendChartProps> = ({ data, breakdowns }) => {
+  const breakdownNames = breakdowns?.map(b => b.name) || [];
+  
+  const hasVix = breakdownNames.some(n => n.includes('VIX') || n.includes('恐慌')) && data.length > 0 && data[0].vix !== undefined;
+  const hasPe = breakdownNames.some(n => n.includes('PE') || n.includes('市盈率')) && data.length > 0 && data[0].pe !== undefined;
+  const hasTrend = breakdownNames.some(n => n.includes('趋势') || n.includes('乖离') || n.includes('均线')) && data.length > 0 && data[0].trend !== undefined;
+  const hasRsi = breakdownNames.some(n => n.includes('RSI') || n.includes('强弱') || n.includes('情绪')) && data.length > 0 && data[0].rsi !== undefined;
+  const hasDrawdown = breakdownNames.some(n => n.includes('回撤')) && data.length > 0 && data[0].drawdown !== undefined;
+  const hasVolatility = breakdownNames.some(n => n.includes('波动率')) && data.length > 0 && data[0].volatility !== undefined;
 
   return (
     <div className="space-y-4">
@@ -132,6 +138,36 @@ export const TrendChart: React.FC<TrendChartProps> = ({ data }) => {
               color="#fb923c" 
               data={data} 
               formatter={(v: number) => typeof v === 'number' ? `${v > 0 ? '+' : ''}${v.toFixed(1)}%` : v}
+            />
+        )}
+        {hasRsi && (
+            <MiniChart 
+              title="相对强弱 (RSI 14D)" 
+              desc="动能指标 (>70超买, <30超卖)" 
+              dataKey="rsi" 
+              color="#f43f5e" 
+              data={data} 
+              formatter={(v: number) => typeof v === 'number' ? v.toFixed(1) : v}
+            />
+        )}
+        {hasDrawdown && (
+            <MiniChart 
+              title="高点回撤 %" 
+              desc="距离近期高点跌幅" 
+              dataKey="drawdown" 
+              color="#facc15" 
+              data={data} 
+              formatter={(v: number) => typeof v === 'number' ? `${v.toFixed(1)}%` : v}
+            />
+        )}
+        {hasVolatility && (
+            <MiniChart 
+              title="波动率 % (20D)" 
+              desc="近期历史波动率" 
+              dataKey="volatility" 
+              color="#22d3ee" 
+              data={data} 
+              formatter={(v: number) => typeof v === 'number' ? `${v.toFixed(2)}%` : v}
             />
         )}
       </div>
