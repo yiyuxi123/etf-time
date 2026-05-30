@@ -4,10 +4,11 @@ import { ScoreCard } from './components/ScoreCard';
 import { MarketFactors } from './components/MarketFactors';
 import { EtfTable } from './components/EtfTable';
 import { TrendChart } from './components/TrendChart';
+import { PositionAdviceCard } from './components/PositionAdviceCard';
 import TabNav from './components/TabNav';
 import TradingJournal from './components/TradingJournal';
 import ScoreReference from './components/ScoreReference';
-import { Activity, RefreshCw } from 'lucide-react';
+import { Activity, RefreshCw, BellRing } from 'lucide-react';
 
 export default function App() {
   const [data, setData] = useState<DashboardData | null>(null);
@@ -17,6 +18,17 @@ export default function App() {
     return (localStorage.getItem('activeTab') as any) || 'dashboard';
   });
   const [activeMarketIdx, setActiveMarketIdx] = useState(0);
+
+  const [thresholds, setThresholds] = useState<Record<string, number>>(() => {
+    try {
+      const saved = localStorage.getItem('marketThresholds');
+      return saved ? JSON.parse(saved) : {};
+    } catch { return {}; }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('marketThresholds', JSON.stringify(thresholds));
+  }, [thresholds]);
 
   useEffect(() => {
     localStorage.setItem('activeTab', activeTab);
@@ -124,6 +136,29 @@ export default function App() {
         <main className="max-w-6xl mx-auto px-6 mt-8">
           <TabNav activeTab={activeTab} setActiveTab={setActiveTab} />
 
+          {activeTab === 'dashboard' && data && <PositionAdviceCard data={data} activeMarketIdx={activeMarketIdx} />}
+
+          {activeTab === 'dashboard' && data && data.markets && data.markets[activeMarketIdx] && (() => {
+             const activeMarket = data.markets[activeMarketIdx];
+             const threshold = thresholds[activeMarket.id];
+             if (threshold !== undefined && activeMarket.marketScore >= threshold) {
+               return (
+                  <div className="bg-emerald-500/20 border border-emerald-500/50 text-emerald-300 px-4 py-3 rounded-xl mb-4 flex items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2 shadow-lg shadow-emerald-500/10">
+                     <div className="flex items-center gap-3">
+                       <BellRing size={18} className="animate-bounce" />
+                       <p className="font-medium text-sm">
+                          【提醒】<strong className="text-white">{activeMarket.name}</strong> 市场当前综合评分 (<strong className="text-white">{activeMarket.marketScore}</strong>分) 已达到您设定的目标阈值 ({threshold}分)。
+                       </p>
+                     </div>
+                     <button onClick={() => setThresholds(prev => ({...prev, [activeMarket.id]: undefined}))} className="text-xs px-2 py-1 bg-emerald-500/20 hover:bg-emerald-500/40 rounded transition">
+                       关闭提醒
+                     </button>
+                  </div>
+               );
+             }
+             return null;
+          })()}
+
           {activeTab === 'dashboard' && data && data.markets && data.markets[activeMarketIdx] && (
             <>
               {/* Market Selection Tabs */}
@@ -143,7 +178,21 @@ export default function App() {
                 
                 {/* Top Section: Score & Breakdown */}
                 <div className="md:col-span-4 h-full flex">
-                  <ScoreCard score={data.markets[activeMarketIdx].marketScore} />
+                  <ScoreCard 
+                    score={data.markets[activeMarketIdx].marketScore} 
+                    threshold={thresholds[data.markets[activeMarketIdx].id]}
+                    onThresholdChange={(val) => {
+                       if (val === undefined) {
+                          setThresholds(prev => {
+                             const next = { ...prev };
+                             delete next[data.markets[activeMarketIdx].id];
+                             return next;
+                          });
+                       } else {
+                          setThresholds(prev => ({...prev, [data.markets[activeMarketIdx].id]: val}));
+                       }
+                    }}
+                  />
                 </div>
                 
                 <div className="md:col-span-8 h-full flex">

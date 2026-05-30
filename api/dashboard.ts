@@ -24,7 +24,8 @@ const calculateRSI = (history: any[], period = 14) => {
 
 async function fetchMarketData(id: string, name: string, benchmarkSymbol: string, etfSymbols: {symbol: string, name: string, fee?: string}[], scoreLogic: (quote: any, history: any[], vixValue?: number) => {score: number, breakdowns: FactorBreakdown[]}, useVix = false): Promise<MarketData> {
     const period1 = new Date();
-    period1.setFullYear(period1.getFullYear() - 1);
+    // Fetch 2 years to allow stable 200MA calculation
+    period1.setFullYear(period1.getFullYear() - 2);
 
     const promises: Promise<any>[] = [
         yf.quote(benchmarkSymbol),
@@ -227,7 +228,21 @@ async function fetchMarketData(id: string, name: string, benchmarkSymbol: string
             cp.pe = (benchmarkQuote.trailingPE || 30) * (close / (benchmarkQuote.regularMarketPrice || close));
         }
 
-        chartData.push(cp as ChartDataPoint);
+        const fakeQuote = {
+            regularMarketPrice: close,
+            twoHundredDayAverage: closes.reduce((a, b) => a + b, 0) / closes.length,
+            fiftyDayAverage: closes.slice(-50).reduce((a, b) => a + b, 0) / Math.min(closes.length, 50),
+            fiftyTwoWeekHigh: yearHigh,
+            trailingPE: cp.pe || (benchmarkQuote.trailingPE ? benchmarkQuote.trailingPE * (close / (benchmarkQuote.regularMarketPrice || close)) : undefined)
+        };
+        
+        const result = scoreLogic(fakeQuote, benchmarkHistory.slice(0, i + 1), cp.vix);
+        cp.score = result.score;
+
+        // Limit chartData to recent 1 year (approx 252 trading days)
+        if (i >= historyLengths - 252) {
+            chartData.push(cp as ChartDataPoint);
+        }
     }
 
     return {

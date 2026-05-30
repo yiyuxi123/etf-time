@@ -1,13 +1,15 @@
 import React from 'react';
 import { cn } from '../lib/utils';
 import { DashboardData } from '../types';
-import { Gauge, TrendingUp, AlertTriangle } from 'lucide-react';
+import { Gauge, TrendingUp, AlertTriangle, BellRing } from 'lucide-react';
 
 interface ScoreCardProps {
   score: number; // Market Score out of 80 (or 100 max visually)
+  threshold?: number;
+  onThresholdChange?: (val: number | undefined) => void;
 }
 
-export const ScoreCard: React.FC<ScoreCardProps> = ({ score }) => {
+export const ScoreCard: React.FC<ScoreCardProps> = ({ score, threshold, onThresholdChange }) => {
   // Map score [0, 80] to descriptive text
   let status = "Hold";
   let colorClass = "text-yellow-500";
@@ -78,13 +80,38 @@ export const ScoreCard: React.FC<ScoreCardProps> = ({ score }) => {
         </div>
       </div>
 
-      <div className={cn("px-6 py-2 rounded-full font-bold text-xs uppercase tracking-widest border border-solid", colorClass, bgClass)}>
+      <div className={cn("px-6 py-2 rounded-full font-bold text-xs uppercase tracking-widest border border-solid mb-4", colorClass, bgClass)}>
         {status}
       </div>
       
-      <p className="mt-4 text-xs text-center text-slate-300 max-w-[200px]">
-        基础评分剔除了单只场内ETF的溢价惩罚，满分为 80 分。
+      {onThresholdChange && (
+         <div className="w-full flex items-center justify-between bg-black/20 p-3 rounded-xl border border-white/5">
+           <div className="flex items-center gap-2 text-slate-400">
+             <BellRing size={14} className={threshold !== undefined && score >= threshold ? "text-emerald-400 animate-pulse" : ""} />
+             <span className="text-xs font-medium">提醒阈值</span>
+           </div>
+           <div className="flex items-center gap-2">
+             <input
+                type="number"
+                min="0"
+                max="80"
+                value={threshold === undefined ? '' : threshold}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  onThresholdChange(val === '' ? undefined : Number(val));
+                }}
+                placeholder="关闭"
+                className="w-16 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-center text-white focus:outline-none focus:border-emerald-500/50"
+             />
+             <span className="text-xs text-slate-500 font-mono">分</span>
+           </div>
+         </div>
+      )}
+
+      <p className="mt-4 text-[10px] text-center text-slate-400 max-w-[200px] leading-relaxed hidden sm:block">
+        当分数达到您设定的阈值时，将在页面顶部显示提醒。
       </p>
     </div>
   );
 };
+

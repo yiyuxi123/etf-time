@@ -31,6 +31,7 @@ export interface ChartDataPoint {
   rsi?: number;
   drawdown?: number;
   volatility?: number;
+  score?: number;
 }
 
 export interface MarketData {

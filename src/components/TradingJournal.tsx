@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Trash2, Target, PiggyBank, ArrowDownRight, ArrowUpRight } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, CartesianGrid, PieChart, Pie } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, CartesianGrid, PieChart, Pie, LineChart, Line } from 'recharts';
 import { EtfInfo } from '../types';
 
 interface TradeRecord {
@@ -34,6 +34,7 @@ export default function TradingJournal({ etfs }: { etfs: EtfInfo[] }) {
   const saveRecords = (newRecords: TradeRecord[]) => {
     setRecords(newRecords);
     localStorage.setItem('etf_trading_journal', JSON.stringify(newRecords));
+    window.dispatchEvent(new Event('trading_journal_updated'));
   };
 
   const addRecord = (e: React.FormEvent) => {
@@ -120,28 +121,40 @@ export default function TradingJournal({ etfs }: { etfs: EtfInfo[] }) {
   const avgCostPerShare = totalShares > 0 ? (totalCost / totalShares) : 0;
 
   const winTrades = chronological.filter(r => r.type === 'SELL' && ((parseFloat(price) || 0) > avgCostPerShare)); // Rough estimate
-  // Re-calculating actual trade win rate accurately
+  // Re-calculating actual trade win rate accurately and generating trend data
   let exactWins = 0;
   let exactLosses = 0;
-  let simPos = 0;
-  let simCost = 0;
+  const simPositions: Record<string, { shares: number, cost: number }> = {};
+  const winRateTrendData: Array<{ name: string; winRate: number }> = [];
+  let sellCount = 0;
   
   chronological.forEach(r => {
+    if (!simPositions[r.symbol]) {
+      simPositions[r.symbol] = { shares: 0, cost: 0 };
+    }
+    const pos = simPositions[r.symbol];
+
     if (r.type === 'BUY') {
-      simCost += r.price * r.shares;
-      simPos += r.shares;
+      pos.cost += r.price * r.shares;
+      pos.shares += r.shares;
     } else {
-      if (simPos > 0) {
-        const avg = simCost / simPos;
+      if (pos.shares > 0) {
+        const avg = pos.cost / pos.shares;
         if (r.price > avg) exactWins++;
         else exactLosses++;
-        simCost -= avg * r.shares;
-        simPos -= r.shares;
+        pos.cost -= avg * r.shares;
+        pos.shares -= r.shares;
+        
+        sellCount++;
+        winRateTrendData.push({
+          name: `${sellCount}`,
+          winRate: Number(((exactWins / sellCount) * 100).toFixed(1))
+        });
       }
     }
   });
 
-  const winRate = (exactWins + exactLosses) > 0 ? (exactWins / (exactWins + exactLosses) * 100) : 0;
+  const winRate = sellCount > 0 ? (exactWins / sellCount * 100) : 0;
   
   const chartData = [
     { name: '已实现净盈亏', value: Number(netRealizedPnL.toFixed(2)), isPositive: netRealizedPnL >= 0 },
@@ -480,6 +493,36 @@ export default function TradingJournal({ etfs }: { etfs: EtfInfo[] }) {
           </div>
           <p className="text-[11px] text-slate-500 mt-6 pt-4 border-t border-white/10 text-center leading-relaxed">
             频繁交易会导致摩擦费用（黄柱）显著上升，可能蚕食大部分已实现收益。建议采取定投及低频交易策略。
+          </p>
+        </div>
+
+        <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+          <h3 className="text-sm font-bold text-slate-300 mb-6 uppercase tracking-widest flex items-center">
+            平仓胜率变化趋势
+          </h3>
+          <div className="w-full h-[250px]">
+            {winRateTrendData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={winRateTrendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
+                  <XAxis dataKey="name" tick={{fill: '#94a3b8', fontSize: 11}} axisLine={false} tickLine={false} />
+                  <YAxis tick={{fill: '#94a3b8', fontSize: 11}} axisLine={false} tickLine={false} domain={[0, 100]} />
+                  <Tooltip 
+                    cursor={{ stroke: '#ffffff20', strokeWidth: 1, strokeDasharray: '4 4' }}
+                    contentStyle={{backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px', zIndex: 1000}}
+                    formatter={(value: number) => [`${value}%`, '胜率']}
+                  />
+                  <Line type="monotone" dataKey="winRate" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3, fill: '#3b82f6', stroke: 'none' }} activeDot={{ r: 5 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-sm text-slate-500">
+                至少需要一笔卖出（平仓）记录才可生成趋势
+              </div>
+            )}
+          </div>
+          <p className="text-[11px] text-slate-500 mt-6 pt-4 border-t border-white/10 text-center leading-relaxed">
+            每次完全或部分平仓后，均会重新核算您的历史累计胜率。建议在追求高胜率的同时把控盈亏比。
           </p>
         </div>
       </div>
