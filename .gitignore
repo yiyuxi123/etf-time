@@ -6,3 +6,11 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Android 签名密钥 —— 绝不可提交公开仓库，泄露后可伪造 APK 签名
+*.keystore
+*.jks
+keystore.properties
+
+# 运行时数据
+data/

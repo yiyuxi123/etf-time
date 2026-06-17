@@ -1,231 +1,350 @@
 import React from 'react';
-import { Target, Info, ShieldAlert, BarChart3, TrendingUp, AlertTriangle, Cpu } from 'lucide-react';
+import { Target, Info, ShieldAlert, BarChart3, TrendingUp, Cpu, Award } from 'lucide-react';
 
 export default function ScoreReference() {
   return (
     <div className="w-full max-w-4xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
       
       <div className="bg-white/5 border border-white/10 rounded-3xl p-8 mb-6">
-        <h2 className="text-xl font-bold text-white mb-6 flex items-center">
-          <Target className="mr-2 text-emerald-400" />
-          系统评分与操作指南
+        <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+          <Target className="text-emerald-400" />
+          多因子双维度量化打分核心引擎指南
         </h2>
         
-        <p className="text-slate-400 text-sm mb-8 leading-relaxed">
-          本系统构建了满分 100 分的市场打分引擎：<strong className="text-white">基础资产得分 (80分) + ETF 场内折溢价得分 (20分)</strong>。<br/>
-          基础资产得分由对应市场的核心估值、情绪与均线趋势计算得出。最后系统会监测各类 ETF 的折溢价率，若溢价大于 3%，无论基础资产多好，总分均判为 0，建议坚决回避。
+        <p className="text-slate-400 text-sm mb-6 leading-relaxed">
+          本系统构建了满分 100 分的两套独立量化评估逻辑：<strong className="text-white">基础各市场资产多因子打分 (80分) + 场内折溢价偏差修正 (20分)</strong>。<br/>
+          为了解决“右侧势头趋势跟随”与“左侧逆向分吸筹”的天然特征冲突，系统将算法彻底解耦为 <strong>📈 波段趋势型</strong> 与 <strong>🧘 长期定投型</strong> 双视图。
         </p>
+
+        <div className="mb-8 p-5 bg-orange-500/10 border border-orange-500/20 rounded-2xl">
+          <h3 className="text-sm font-bold text-orange-400 flex items-center gap-1.5 mb-2">
+            <ShieldAlert className="w-4 h-4 text-orange-400" />
+            <span>自选资产、实盘定投纪律与折溢价摩擦声明</span>
+          </h3>
+          <p className="text-slate-300 text-xs leading-relaxed space-y-2">
+            <span className="block text-slate-200 mt-2"><strong>🛠 自行选股与标别管理</strong>: 支持全量管理底层资产标的。顶部点击『标的管理设置』引入场外联接、重组场内ETF，自定义费率，自动刷新并覆盖全局引擎。</span>
+            <span className="block text-slate-200 mt-2"><strong>📊 实盘交易纪律与记录管线</strong>: 提供双模态(【ETF】场内份额 / 【OTC】场外定投确权金额)录入纪法。引入 <strong>自动化摩擦费率扣减</strong> 以及 <strong>定投 (SIP) 标记</strong> 支持，隔离定投数据。支持本地 CSV/JSON 随时导入导出。</span>
+            <span className="block text-slate-200 mt-2"><strong>⚠️ 汇率对冲与折溢价</strong>: 美股等 QDII 将因 离岸人民币 (USD/CNY) 汇率产生巨额对冲误差。此外，重度恐慌时境内纳指常发 10-15% 溢价陷阱，请严守纪律。</span>
+          </p>
+        </div>
+
+        {/* Dynamic & Cross Border Highlights */}
+        <div className="mb-8 p-5 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl">
+          <h3 className="text-sm font-bold text-indigo-300 flex items-center gap-1.5 mb-2">
+            <Cpu className="w-4 h-4 text-indigo-400" />
+            <span>核心算法：跨大类资产交叉因子与动态重估 (DRRW) 机制</span>
+          </h3>
+          <p className="text-slate-300 text-xs leading-relaxed">
+            不同于单一技术面，本引擎完美融合跨大类宏观因子：
+          </p>
+          <ul className="text-slate-400 text-xs space-y-1.5 list-disc list-inside mt-2">
+            <li><strong>美元外汇敞口避险 (USD/CNY)</strong>：实存计入纳斯达克汇兑溢价。当汇率极值扭转时，安全系数自动缩放。</li>
+            <li><strong>中美利差无风险锚 (US10Y)</strong>：监控 <strong>^TNX (美国10年期国债收益率)</strong>。其上行将虹吸新兴市场蓝筹，下行促外资流入。</li>
+            <li><strong>DRRW 动态风险权重管理</strong>：在美股模块，当 VIX 极高(&gt;25)极度恐慌时，系统会自动将 50MA 趋势权重降低，提升 PE 估值性价比权重；当 VIX 极低(&lt;15)平稳主升时，增加趋势追随权重，实现自适应市场状态微调。</li>
+          </ul>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <div className="bg-[#0D1527] border border-blue-500/20 rounded-2xl p-6">
+            <h3 className="text-blue-400 font-bold mb-3 text-sm flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-blue-400" />
+              <span>📈 波段趋势视图指标标准权重 (右侧)</span>
+            </h3>
+            <ul className="text-slate-300 text-xs space-y-2.5">
+              <li className="flex justify-between items-start gap-4">
+                <span><strong>200日长期均线 (25 - 30分)</strong>：顺势跟强，高于长期牛熊线得分。</span>
+                <span className="text-blue-400 font-mono shrink-0">重兵驻防</span>
+              </li>
+              <li className="flex justify-between items-start gap-4">
+                <span><strong>50日中期均线 (15 - 20分)</strong>：中期动量强度，判定多头势能。</span>
+                <span className="text-slate-400 font-mono shrink-0">顺势势能</span>
+              </li>
+              <li className="flex justify-between items-start gap-4">
+                <span><strong>滚动估值PE / 汇率 (15分)</strong>：估值底气与宏观美元外汇。</span>
+                <span className="text-slate-400 font-mono shrink-0">安全边界</span>
+              </li>
+              <li className="flex justify-between items-start gap-4">
+                <span><strong>RSI / 外围债率 (10 - 20分)</strong>：动能超卖或外围收益流动性。</span>
+                <span className="text-slate-400 font-mono shrink-0">非对称优势</span>
+              </li>
+            </ul>
+          </div>
+
+          <div className="bg-[#0B1A1E] border border-emerald-500/20 rounded-2xl p-6">
+            <h3 className="text-emerald-400 font-bold mb-3 text-sm flex items-center gap-2">
+              <Award className="w-4 h-4 text-emerald-400" />
+              <span>🧘 长期定投视图指标标准权重 (左侧)</span>
+            </h3>
+            <ul className="text-slate-300 text-xs space-y-2.5">
+              <li className="flex justify-between items-start gap-4">
+                <span><strong>低估吸筹性价比 (25 - 30分)</strong>：极端便宜或低于200MA时，逆向得分高。</span>
+                <span className="text-emerald-400 font-mono shrink-0">黄金深坑</span>
+              </li>
+              <li className="flex justify-between items-start gap-4">
+                <span><strong>超卖情绪RSI / 恐慌度 (15 - 20分)</strong>：恐惧中吸货，超卖区高分，狂热区得0分。</span>
+                <span className="text-slate-400 font-mono shrink-0">别人恐惧</span>
+              </li>
+              <li className="flex justify-between items-start gap-4">
+                <span><strong>最大历史回撤 (10 - 20分)</strong>：度量当前距离高点回调，跌幅越大买点越安全。</span>
+                <span className="text-slate-400 font-mono shrink-0">回调安全</span>
+              </li>
+              <li className="flex justify-between items-start gap-4">
+                <span><strong>50日中期均线 (0 - 20分)</strong>：非相关大类剔除此中线，在逆向建仓阶段忽略中期干扰。</span>
+                <span className="text-slate-400 font-mono shrink-0">忽略波折</span>
+              </li>
+            </ul>
+          </div>
+        </div>
 
         <div className="space-y-4">
           <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-6">
-            <h3 className="text-emerald-400 font-bold mb-2 tracking-wide text-lg flex items-center">
-              <span>80 - 100 分：强烈买入区 (加倍定投)</span>
+            <h3 className="text-emerald-400 font-bold mb-2 tracking-wide text-sm flex items-center">
+              <span>🟢 70 - 100 分：极具性价比 / 强烈买入 (黄金攒投区)</span>
             </h3>
-            <p className="text-slate-300 text-sm leading-relaxed">
-              <strong>市场特征：</strong> 资产极度低估、情绪恐慌或场内处于折价状态。<br/>
-              <strong>操作建议：</strong> 绝佳的底部建仓或加倍定投区间。
+            <p className="text-slate-300 text-xs leading-relaxed">
+              <strong>【波段】操作建议：</strong> 趋势共振完成完全上行，右侧势头饱满，强烈突破买点。 <br/>
+              <strong>【定投】操作建议：</strong> 极其悲观恐慌超卖，资产极端便宜。回测推荐调频至最大投入（通常为 1.5x - 3.0x 倍数累积优质筹码）。
             </p>
           </div>
 
           <div className="bg-emerald-400/10 border border-emerald-400/20 rounded-2xl p-6">
-            <h3 className="text-emerald-300 font-bold mb-2 tracking-wide text-lg">
-              60 - 79 分：买入区 (常规定投)
+            <h3 className="text-emerald-300 font-bold mb-2 tracking-wide text-sm">
+              🔵 50 - 69 分：势能良好 / 温和买入 (常规定投区)
             </h3>
-            <p className="text-slate-300 text-sm leading-relaxed">
-              <strong>操作建议：</strong> 估值处于合理偏低区间。保持纪律，正常执行分批买入或按定投计划执行。
+            <p className="text-slate-300 text-xs leading-relaxed">
+              <strong>【波段】操作建议：</strong> 趋势巩固，多头发力，标准轻仓或加仓。 <br/>
+              <strong>【定投】操作建议：</strong> 价格合理，波动良性。执行 1.0x 标准基数定投。
             </p>
           </div>
 
           <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-2xl p-6">
-            <h3 className="text-yellow-400 font-bold mb-2 tracking-wide text-lg">
-              40 - 59 分：持有观望区 (底仓留存)
+            <h3 className="text-yellow-400 font-bold mb-2 tracking-wide text-sm">
+              🟡 30 - 49 分：位置中性 / 守土观望 (防守减额区)
             </h3>
-            <p className="text-slate-300 text-sm leading-relaxed">
-              <strong>操作建议：</strong> 资产估值中性，停止加仓，持有底仓耐心观望。场外基金此时也可暂缓买入。
-            </p>
-          </div>
-
-          <div className="bg-orange-500/10 border border-orange-500/20 rounded-2xl p-6">
-            <h3 className="text-orange-400 font-bold mb-2 tracking-wide text-lg">
-              20 - 39 分：减仓区 (兑现利润)
-            </h3>
-            <p className="text-slate-300 text-sm leading-relaxed">
-              <strong>操作建议：</strong> 资产估值偏高，市场情绪亢奋，建议分批止盈兑现利润。
+            <p className="text-slate-300 text-xs leading-relaxed">
+              <strong>【波段】操作建议：</strong> 趋势高位盘整或跌破核心支撑，持有低仓。 <br/>
+              <strong>【定投】操作建议：</strong> 估值在中高危水平或无风险利率高烧无退。建议拉长定投跨度，缩减积攒额度。
             </p>
           </div>
 
           <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-6">
-            <h3 className="text-red-400 font-bold mb-2 tracking-wide text-lg">
-              &lt; 20 分：清仓或高溢价否决区 (严格回避)
+            <h3 className="text-red-400 font-bold mb-2 tracking-wide text-sm">
+              🔴 &lt; 30 分：估值严重透支 / 严格防守 (暂停扣款 / 一票否决)
             </h3>
-            <p className="text-slate-300 text-sm leading-relaxed">
-              <strong>操作建议：</strong> 资产出现严重泡沫，或场内 <strong>溢价率 &gt; 3%</strong>。此时买入将承受极大的回归损耗，建议清仓、融券做空（高阶）或严格回避。
+            <p className="text-slate-300 text-xs leading-relaxed">
+              <strong>【波段】操作建议：</strong> 长期牛熊破死破跌，无条件清仓止损保护本金存留。<br/>
+              <strong>【定投】操作建议：</strong> 高位疯牛赶顶泡沫溢满，RSI与超买爆表，触发高位暂停定投，绝不追高代劳。<br/>
+              <strong>一票否决规则（场内折溢价）：</strong> 
+              场内溢价率在波段视界若<strong> &gt; 3.0%</strong>，或定投视界若 <strong> &gt; 0.5%</strong>，皆被系统强力降级，一票否决为零，回避高额套利摩擦损耗。
             </p>
           </div>
         </div>
       </div>
 
       <div className="bg-white/5 border border-white/10 rounded-3xl p-8 space-y-8">
-        <h2 className="text-xl font-bold text-white mb-6 flex items-center">
-          <BarChart3 className="mr-2 text-blue-400" />
-          各市场基础打分逻辑 (总分80分)
+        <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+          <BarChart3 className="text-blue-400" />
+          四大市场资产多因子细分打分模型 (每类别总分 80 分)
         </h2>
 
         <div>
-          <h3 className="text-slate-200 font-bold mb-2 flex items-center gap-2">
-            纳斯达克 100 (美股)
-          </h3>
-          <ul className="list-disc list-inside text-sm text-slate-400 space-y-2 leading-relaxed">
-            <li><strong>估值系统 (满分 30 分)</strong>：QQQ 动态 PE ≤ 25 满分，≥ 35 零分。</li>
-            <li><strong>情绪系统 (满分 20 分)</strong>：全球恐慌指数 VIX ≥ 30 满分，≤ 15 零分。</li>
-            <li><strong>趋势特征 (满分 15 分)</strong>：向上偏离 200 日线 &gt; 5% 满分，向下受阻零分。</li>
-            <li><strong>危机阿尔法 (满分 15 分)</strong>：美股长牛背景下，较年度高点回撤超 15% 即视为极佳的黄金坑底吸筹机会，获满分。</li>
-          </ul>
+          <div className="flex items-center justify-between border-b border-white/10 pb-2 mb-4">
+            <h3 className="text-slate-100 font-bold text-base flex items-center gap-2">
+              纳斯达克 100 (美股核心进攻)
+            </h3>
+            <span className="text-xs bg-blue-500/20 text-blue-400 font-mono px-2 py-0.5 rounded-full">主攻宽频牛</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs text-slate-300">
+            <div>
+              <h4 className="font-bold text-slate-200 mb-2 font-mono">📈 波段趋势因子配比 (正常状态下)</h4>
+              <ul className="list-disc list-inside space-y-1.5 text-slate-400">
+                <li><strong>200日均线支撑 (25分)</strong>：价格在 200MA 上下偏离度算准。</li>
+                <li><strong>50日均线势能 (15分)</strong>：50MA线上及其倾斜多头状态。</li>
+                <li><strong>估值性价比 PE (15分)</strong>：纳指PE在 25-35 宽幅。 </li>
+                <li><strong>恐慌情绪 VIX (10分)</strong>：SPX VIX 偏离 15 - 30 恐慌。</li>
+                <li><strong>汇率避险 USD/CNY (15分)</strong>：汇率反向增厚（7.35对折算）。</li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-bold text-slate-200 mb-2 font-mono">🧘 长期定投因子配比 (正常状态下)</h4>
+              <ul className="list-disc list-inside space-y-1.5 text-slate-400">
+                <li><strong>低估吸筹 PE 性价比 (25分)</strong>：极低PE释放大量定投抢筹。</li>
+                <li><strong>长期生存空间 200MA (15分)</strong>：贴近甚至跌穿牛熊线时，倾泄买点。</li>
+                <li><strong>恐惧吸筹 VIX (15分)</strong>：高企引发极具偏斜的加舱打分。</li>
+                <li><strong>危机高位回撤 (15分)</strong>：距离一年最高的回撤，越狠越买。</li>
+                <li><strong>汇率缓冲 USD/CNY (10分)</strong>：评估换算对冲保障安全。</li>
+              </ul>
+            </div>
+          </div>
+          <span className="text-[10px] text-slate-500 font-mono block mt-2">※ 处于高 VIX 时启动 DRRW（提升 PE 占定投大额比 30 分，缩紧趋势干扰）。</span>
         </div>
 
         <div className="border-t border-white/10 pt-6">
-          <h3 className="text-slate-200 font-bold mb-2 flex items-center gap-2">
-            沪深 300 (A股)
-          </h3>
-          <ul className="list-disc list-inside text-sm text-slate-400 space-y-2 leading-relaxed">
-            <li><strong>估值系统 (满分 30 分)</strong>：追踪 A 股核心蓝筹 PE。基于反脆弱逻辑，PE ≤ 10 满分，≥ 14 零分（拓宽阈值防过拟合）。</li>
-            <li><strong>趋势系统 (满分 20 分)</strong>：长期上行趋势提供分数。价格向上偏离 200 日线 5% 得满分。</li>
-            <li><strong>情绪系统 (满分 15 分)</strong>：RSI 处于低位超卖区 (≤ 30) 获满分，提示左侧建仓机会；超买区 (≥ 70) 零分。</li>
-            <li><strong>回撤保护 (满分 15 分)</strong>：A 股超跌往往伴随强力反弹机会，年度高点回撤超过 20% 获得满分鼓励低吸底仓。</li>
-          </ul>
+          <div className="flex items-center justify-between border-b border-white/10 pb-2 mb-4">
+            <h3 className="text-slate-100 font-bold text-base flex items-center gap-2">
+              沪深 300 (国内大盘蓝筹)
+            </h3>
+            <span className="text-xs bg-emerald-500/20 text-emerald-400 font-mono px-2 py-0.5 rounded-full">反脆弱极地牛</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs text-slate-300">
+            <div>
+              <h4 className="font-bold text-slate-200 mb-2 font-mono">📈 波段趋势因子配比</h4>
+              <ul className="list-disc list-inside space-y-1.5 text-slate-400">
+                <li><strong>200日长期趋势 (25分)</strong>：多头确立极强评分依据。</li>
+                <li><strong>50日中期动能 (15分)</strong>：50MA 上方多头。</li>
+                <li><strong>估值性价比 PE (15分)</strong>：核心蓝筹 PE 在 10-14 安全底盘。</li>
+                <li><strong>相对强弱 RSI (15分)</strong>：极冷或极热偏离，常态健康区间最高。</li>
+                <li><strong>中美利差流动性 (10分)</strong>：追踪美10Y国债 ^TNX 变化，越低越好。</li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-bold text-slate-200 mb-2 font-mono">🧘 长期定投因子配比</h4>
+              <ul className="list-disc list-inside space-y-1.5 text-slate-400">
+                <li><strong>估值超低 PE (25分)</strong>：PE ≤ 10 时满负荷评分，白送区域。</li>
+                <li><strong>筑底长期均线 (15分)</strong>：跌穿 200MA 时，给予反脆弱多加高分。</li>
+                <li><strong>情绪超卖 RSI (15分)</strong>：RSI 跌入 ≤30 冰点，恐惧贪婪底出现。</li>
+                <li><strong>危机回撤保护 (15分)</strong>：回撤达到 20% 提供极限支持。</li>
+                <li><strong>中美利差无风险锚 (10分)</strong>：美债收益高烧不退时采取合理克制。</li>
+              </ul>
+            </div>
+          </div>
         </div>
 
         <div className="border-t border-white/10 pt-6">
-          <h3 className="text-slate-200 font-bold mb-2 flex items-center gap-2">
-            黄金 (避险工具)
-          </h3>
-          <ul className="list-disc list-inside text-sm text-slate-400 space-y-2 leading-relaxed">
-            <li><strong>长期趋势 (满分 30 分)</strong>：相比于牛熊，黄金更重视趋势延续。价格超出 200 日线 5% 即获满分。</li>
-            <li><strong>中期动能 (满分 20 分)</strong>：中期上涨动能足（超 50 日线 3%）。</li>
-            <li><strong>情绪系统 (满分 20 分)</strong>：由于黄金常常在避险情绪剧烈时拉升，RSI 超 70 时易回调（此时得零分），RSI 低于 40（超跌段）得分更高。</li>
-            <li><strong>回撤保护 (满分 10 分)</strong>：近期从高点有 10% 左右回撤将提供入场良机。</li>
-          </ul>
+          <div className="flex items-center justify-between border-b border-white/10 pb-2 mb-4">
+            <h3 className="text-slate-100 font-bold text-base flex items-center gap-2">
+              黄金 (全球抗通胀避险)
+            </h3>
+            <span className="text-xs bg-amber-500/20 text-amber-400 font-mono px-2 py-0.5 rounded-full">长尾避风港</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs text-slate-300">
+            <div>
+              <h4 className="font-bold text-slate-200 mb-2 font-mono">📈 波段趋势因子配比</h4>
+              <ul className="list-disc list-inside space-y-1.5 text-slate-400">
+                <li><strong>长期势头 200MA (30分)</strong>：超 200MA 5% 为完美强势波段。</li>
+                <li><strong>中期斜率 50MA (20分)</strong>：50MA 极佳上行跟随。</li>
+                <li><strong>情绪强度 RSI (20分)</strong>：高位极热恐调整，RSI 温和偏强最优。</li>
+                <li><strong>高点回撤深度 (10分)</strong>：洗盘后势头拉起，回撤在 10% 以内扣分少。</li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-bold text-slate-200 mb-2 font-mono">🧘 长期定投因子配比</h4>
+              <ul className="list-disc list-inside space-y-1.5 text-slate-400">
+                <li><strong>长线安全均线 (30分)</strong>：低于 200MA，长久筑底性价比满分。</li>
+                <li><strong>超卖情绪 RSI (20分)</strong>：低迷超卖，散户割肉即满分。</li>
+                <li><strong>中期安全回落 (20分)</strong>：低于 50MA 逆向收集。</li>
+                <li><strong>历史回撤深度 (10分)</strong>：极限下跌回调防线。</li>
+              </ul>
+            </div>
+          </div>
         </div>
 
         <div className="border-t border-white/10 pt-6">
-          <h3 className="text-slate-200 font-bold mb-2 flex items-center gap-2">
-            国内债市 (底仓与对冲)
-          </h3>
-          <ul className="list-disc list-inside text-sm text-slate-400 space-y-2 leading-relaxed">
-            <li>作为稳定生息资产，评价体系着眼于<strong>缓步慢行和低波动率</strong>。</li>
-            <li><strong>长期均线 (满分 30 分)</strong>：向上偏离 200 日均线 2% 即视为强牛市满分。</li>
-            <li><strong>中期动量 (满分 20 分)</strong>：获 50 日均线良好支撑得分 (1%满分)。</li>
-            <li><strong>回撤防守 (满分 20 分)</strong>：作为防守底仓，一旦发生超过 1.5% 的回撤扣除全部分数以规避债市熊市。</li>
-            <li><strong>波动率考核 (满分 10 分)</strong>：过去二十天历史回报标准差越低（波动率 &lt; 0.2%），说明市场预期越稳定，得分越高。</li>
-            <li><span className="text-emerald-400 opacity-90">注：本模块支持跟踪 OTC 场外指数基金 (如 003376)。场外基金无折溢价率风险，默认获得场内折价奖励满分（20分）。</span></li>
-          </ul>
+          <div className="flex items-center justify-between border-b border-white/10 pb-2 mb-4">
+            <h3 className="text-slate-100 font-bold text-base flex items-center gap-2">
+              国内债券 (压舱石低波防守)
+            </h3>
+            <span className="text-xs bg-rose-500/20 text-rose-400 font-mono px-2 py-0.5 rounded-full">常恒生息对冲</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs text-slate-300">
+            <div>
+              <h4 className="font-bold text-slate-200 mb-2 font-mono">📈 波段趋势因子配比</h4>
+              <ul className="list-disc list-inside space-y-1.5 text-slate-400">
+                <li><strong>200MA长期强支撑 (25分)</strong>：偏离度在常态上攀区间。</li>
+                <li><strong>50MA中期稳上扬 (15分)</strong>：平滑上升不失守。</li>
+                <li><strong>超低高点回撤 (20分)</strong>：债市高位不容得超1.5% 回撤，一旦失控全扣。</li>
+                <li><strong>波动率考核 (10分)</strong>：20日波动极致窄小保持生息平稳。</li>
+                <li><strong>降息窗口 TNX (10分)</strong>：美债下行溢出释放流动性加分。</li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-bold text-slate-200 mb-2 font-mono">🧘 长期定投因子配比</h4>
+              <ul className="list-disc list-inside space-y-1.5 text-slate-400">
+                <li><strong>超强利率低吸 200MA (30分)</strong>：回调筑底超安全无波买入。</li>
+                <li><strong>50MA回归线 (15分)</strong>：常态逆向收集。</li>
+                <li><strong>历史极限回撤 (20分)</strong>：稳妥防线上扣。</li>
+                <li><strong>波动狭窄度 Vol (15分)</strong>：追求超平稳运行，高危波动扣分。</li>
+              </ul>
+            </div>
+          </div>
+          <span className="text-[10px] text-emerald-400 opacity-90 block mt-3">※ 本债市模块支持跟踪零折溢价的 OTC 场外指数联接基金。场外默认获得最高场内折价修正满分（20分）。</span>
         </div>
       </div>
       
       <div className="bg-white/5 border border-white/10 rounded-3xl p-8 mb-6">
-        <h2 className="text-xl font-bold text-white mb-6 flex items-center">
-          <Cpu className="mr-2 text-indigo-400" />
-          系统科学性评估与受众定位
+        <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+          <Cpu className="text-indigo-400" />
+          系统科学性评估与算法定位
         </h2>
         
         <p className="text-slate-400 text-sm mb-6 leading-relaxed">
-          本系统构建逻辑基于成熟的<strong>多因子量化模型 (Multi-Factor Model)</strong> 与<strong>宏观大类资产配置 (Macro Asset Allocation)</strong>，规避了大量散户常见的“追涨杀跌”和“单一资产满仓”的情绪化陷阱。
+          本系统构建逻辑基于业内成熟的<strong>大类资产轮动理论 (Asset Rotation)</strong>、<strong>行为金融学 (Behavioral Finance)</strong>、以及 <strong>防过拟合自适应网格</strong>，帮助投资者绕过“跟风抬轿”与“满仓死扛”等感性认知缺陷。
         </p>
 
         <div className="space-y-6">
           <div>
-            <h3 className="text-slate-200 font-bold mb-2 flex items-center gap-2">
+            <h3 className="text-slate-200 font-bold text-sm mb-2 flex items-center gap-2">
               <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full"></span>
-              系统相当于什么水平的投资者？
+              系统定位处于什么水平？
             </h3>
-            <p className="text-sm text-slate-400 leading-relaxed pl-3 border-l-2 border-indigo-500/20">
-              相当于拥有 <strong>5 - 10 年交易经验的机构级宏观策略研究员</strong>或 <strong>FOF (基金中基金) 基金经理</strong>。本系统不追求一天翻倍的短线暴利，而是着眼于底层逻辑、分散投资与盈亏比的长期胜率。
+            <p className="text-xs text-slate-400 leading-relaxed pl-3 border-l-2 border-indigo-500/20">
+              相当于您聘请了一位拥有 <strong>8 年以上交易资历的宏观大类配置买方研究员</strong>。它不关心任何短周期日内噪声与小作文，而是死克宏观无风险流动性底、波动率、历史周期位置、折溢价套利等客观常识。
             </p>
           </div>
 
           <div>
-            <h3 className="text-slate-200 font-bold mb-2 flex items-center gap-2">
+            <h3 className="text-slate-200 font-bold text-sm mb-2 flex items-center gap-2">
               <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-              系统的科学性体现在哪里？
+              反脆弱架构的落地体现
             </h3>
-            <ul className="list-none text-sm text-slate-400 space-y-3 pl-3 border-l-2 border-emerald-500/20">
-              <li><strong>遵循市场常识防过拟合：</strong> 对 PE（估值）、VIX（情绪）、RSI（动能）等经典量化指标进行宽频带（Band）线性评分截断（Clamp），有效防止对历史数据的重度过拟合。</li>
-              <li><strong>克服人性弱点（左侧）：</strong> 运用反脆弱逻辑。在美股大幅回撤（危机阿尔法）或 A股/黄金 RSI 处于极度超卖区时逆向给予高分，实现“别人恐惧我贪婪”。</li>
-              <li><strong>顺应市场趋势（右侧）：</strong> 结合 200 日与 50 日均线，在主要阻力位形成趋势共振时发力，避免在单边熊市中无脑接飞刀。</li>
-              <li><strong>大类资产非相关性：</strong> 不死磕单一市场（比如只炒 A 股）。在防守型债券看重“低波动率”，在进攻型美股看重“估值与回撤的性价比”，因地制宜。</li>
+            <ul className="list-none text-xs text-slate-400 space-y-3 pl-3 border-l-2 border-emerald-500/20">
+              <li><strong>宽限度阶梯（防过拟合）：</strong> 对 PE、VIX、RSI 等高灵敏因子的多级梯度都设置了线性的截断限制，不猜测个位数精确值，杜绝了重度依赖单一历史表现的“过拟合神话”。</li>
+              <li><strong>反弹危机阿尔法：</strong> 特设回撤触发权重溢额机制。在市场大跌（如纳指大回撤、A股RSI坠入25冰点）散户割肉时，长期定投评分会非线性急涨，配合历史回测，自动给出 2.0x 乃至更高加倍定投提示。</li>
+              <li><strong>双系统避害机制：</strong> 场内高额溢价（例如海外 QDII 遭到疯狂买盘爆买，场内买价超出净值 &gt;3%）时，该资产的最终得分将无条件归零，避免做“高接接盘侠”。</li>
             </ul>
           </div>
         </div>
       </div>
 
       <div className="bg-white/5 border border-white/10 rounded-3xl p-8 space-y-8">
-        <h2 className="text-xl font-bold text-white mb-6 flex items-center">
-          <Info className="mr-2 text-purple-400" />
-          系统专有名词解释
+        <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+          <Info className="text-purple-400" />
+          系统高阶专有名词速览
         </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-black/20 rounded-xl p-5 border border-white/5">
-            <h4 className="text-emerald-400 font-bold mb-2">折溢价率 (Premium/Discount)</h4>
-            <p className="text-sm text-slate-400 leading-relaxed">
-              ETF 在场内（股票软件中）的交易价格与其真实净值（IOPV）的差值。<strong>溢价</strong>代表交易价高于净值，属于买贵了，会遭受额外摩擦损失；<strong>折价</strong>代表交易价低于净值，属于打折买入。本系统对高溢价（&gt;3%）实行一票否决。
+            <h4 className="text-emerald-400 font-bold mb-2 text-xs font-mono">折溢价率 (Premium/Discount Ratio)</h4>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              场内交易价格相较其实时基金净值的偏离度。<strong>溢价</strong>暗示场内资金追捧买贵了；<strong>折价</strong>则表示买家清冷可以打折吸货。本系统特置最高一票降权防摩擦。
             </p>
           </div>
 
           <div className="bg-black/20 rounded-xl p-5 border border-white/5">
-            <h4 className="text-blue-400 font-bold mb-2">动态市盈率 (Trailing PE)</h4>
-            <p className="text-sm text-slate-400 leading-relaxed">
-              用来衡量资产是否“昂贵”的基础估值指标。计算方式为总市值除以最近四个季度的净利润。PE 越低，说明回本周期越短，资产越具有投资性价比。本系统认为纳指 PE 超 35 极度危险，低于 20 为极度低估。
+            <h4 className="text-blue-400 font-bold mb-2 text-xs font-mono">滚动市盈率 (Trailing PE)</h4>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              常恒估值模型基础。使用最近4季度公司每股真实收益加总，测算回本周转。宽频 PE 估值中：纳指 25 以下极富吸引力，35 以上风险极高。
             </p>
           </div>
 
           <div className="bg-black/20 rounded-xl p-5 border border-white/5">
-            <h4 className="text-purple-400 font-bold mb-2">恐慌指数 (VIX)</h4>
-            <p className="text-sm text-slate-400 leading-relaxed">
-              芝加哥期权交易所波动率指数。用来衡量市场对未来 30 天波动性的预期。VIX 越高，说明市场越恐慌。巴菲特名言“别人恐惧我贪婪”，当 VIX 飙升（如 &gt;30）时，往往是黄金坑底买入良机。
+            <h4 className="text-purple-400 font-bold mb-2 text-xs font-mono">恐慌指数 (SPX VIX)</h4>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              标普500期权波动率指数，作为全球市场情绪情绪极值的先锋观测仪。飙升 (&gt;25) 预示黄金坑见底；常态低迷 (&lt;15) 预示平稳安全上涨。
             </p>
           </div>
 
           <div className="bg-black/20 rounded-xl p-5 border border-white/5">
-            <h4 className="text-orange-400 font-bold mb-2">趋势乖离率 (Trend Deviation)</h4>
-            <p className="text-sm text-slate-400 leading-relaxed">
-              当前资产价格偏离核心长期均线（如 200 日均线）的百分比。当价格大幅向下偏离均线，往往意味着过度超卖（机会）；而大幅向上偏离，则不仅代表强势，也可能蕴含技术性回调风险。不同资产对乖离率的打分逻辑不同。
+            <h4 className="text-orange-400 font-bold mb-2 text-xs font-mono">美国10年期国债收益率 (^TNX)</h4>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              全球无风险资产价值定价之母（外围无风风险锚）。其高企代表流动性抽血，导致非美元新兴市场（以及债券板块）吸引力折损。下行代表降息流动性释放拓宽。
             </p>
           </div>
 
-          <div className="bg-black/20 rounded-xl p-5 border border-white/5">
-            <h4 className="text-yellow-400 font-bold mb-2">核心蓝筹 (Blue Chip)</h4>
-            <p className="text-sm text-slate-400 leading-relaxed">
-              指在特定行业内占据支配地位、业绩优良、分红稳定、红利丰厚的大公司股票（如沪深 300 中的代表性企业）。系统将沪深 300 视作中国核心资产蓝筹的代理指标。
-            </p>
-          </div>
-
-          <div className="bg-black/20 rounded-xl p-5 border border-white/5">
-            <h4 className="text-slate-300 font-bold mb-2">场内与场外 (On-Exchange vs OTC)</h4>
-            <p className="text-sm text-slate-400 leading-relaxed">
-              <strong>场内基金（如 ETF）</strong>：在证券交易所挂牌上市，像买卖股票一样实时交易，价格受供需影响，会产生折溢价。<br/>
-              <strong>场外基金（如 OTC 联接基金）</strong>：通过银行、支付宝或天天基金等渠道按当日收盘净值申购/赎回，没有折溢价，但确认份额较慢。
-            </p>
-          </div>
-
-          <div className="bg-black/20 rounded-xl p-5 border border-white/5">
-            <h4 className="text-pink-400 font-bold mb-2">相对强弱指标 (RSI)</h4>
-            <p className="text-sm text-slate-400 leading-relaxed">
-              一种衡量某一资产买卖双方力量对比的技术动能指标。通常 RSI 大于 70 说明买方力量过大（处于超买区），面临回调风险；低于 30 甚至更低说明卖方过度宣泄（处于超卖区），往往酝酿反弹或见底机会。黄金和 A 股受此反馈比较明显。
-            </p>
-          </div>
-
-          <div className="bg-black/20 rounded-xl p-5 border border-white/5">
-            <h4 className="text-cyan-400 font-bold mb-2">高点回撤率 (Drawdown)</h4>
-            <p className="text-sm text-slate-400 leading-relaxed">
-              资产当前价格距离过去一年最高点的跌幅。在股票市场中，过大的超跌（如 &gt; 20%）可能是一个很好的低吸区域；而在债市这样属于长尾生息防守的资产中，过大的回撤则往往意味着基本面的严重失血（系统予以规避倒扣分）。
-            </p>
-          </div>
-
-          <div className="bg-black/20 rounded-xl p-5 border border-white/5">
-            <h4 className="text-indigo-400 font-bold mb-2">波动率 (Volatility)</h4>
-            <p className="text-sm text-slate-400 leading-relaxed">
-              统计学中衡量资产价格起伏剧烈程度的指标（本系统使用近20日的标准均方差计率）。作为底本的债市板块，其波动率应尽量贴近于 0，保持如心跳般的极弱平稳波动是高分项。
+          <div className="bg-[#0D1527] rounded-xl p-5 border border-blue-500/10 col-span-1 md:col-span-2">
+            <h4 className="text-indigo-400 font-bold mb-2 text-xs font-mono">美元汇率套利系数 (USD/CNY)</h4>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              跨境外籍资产换算护城河。纳指 QDII 最终在华计价以法币挂钩，当美元相较于人民币贬值（汇率回归）时，会产生汇差侵蚀，反之则构成对冲溢价。模型特设 7.35 减扣梯队，实战反馈极致精细。
             </p>
           </div>
         </div>

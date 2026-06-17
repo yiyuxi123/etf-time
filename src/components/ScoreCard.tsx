@@ -7,34 +7,62 @@ interface ScoreCardProps {
   score: number; // Market Score out of 80 (or 100 max visually)
   threshold?: number;
   onThresholdChange?: (val: number | undefined) => void;
+  currentView?: 'swing' | 'dca';
 }
 
-export const ScoreCard: React.FC<ScoreCardProps> = ({ score, threshold, onThresholdChange }) => {
+export const ScoreCard: React.FC<ScoreCardProps> = ({ score, threshold, onThresholdChange, currentView = 'swing' }) => {
+  const isDcaMode = currentView === 'dca';
+
   // Map score [0, 80] to descriptive text
   let status = "Hold";
   let colorClass = "text-yellow-500";
   let bgClass = "bg-yellow-500/10";
   
-  if (score >= 70) {
-    status = "强烈买入 (加倍定投)";
-    colorClass = "text-emerald-400";
-    bgClass = "bg-emerald-500/20 border-emerald-500/50";
-  } else if (score >= 50) {
-    status = "买入 (常规定投)";
-    colorClass = "text-emerald-300";
-    bgClass = "bg-emerald-400/20 border-emerald-400/50";
-  } else if (score >= 30) {
-    status = "持有 (观望留存)";
-    colorClass = "text-yellow-400";
-    bgClass = "bg-yellow-500/20 border-yellow-500/50";
-  } else if (score >= 15) {
-    status = "减仓 (逐步止盈)";
-    colorClass = "text-orange-400";
-    bgClass = "bg-orange-500/20 border-orange-500/50";
+  if (isDcaMode) {
+    if (score >= 70) {
+      status = "强烈吸筹 (最佳定投建仓窗口)";
+      colorClass = "text-emerald-400";
+      bgClass = "bg-emerald-500/20 border-emerald-500/50";
+    } else if (score >= 50) {
+      status = "常规定投 (分批平摊仓位成本)";
+      colorClass = "text-emerald-300";
+      bgClass = "bg-emerald-400/20 border-emerald-400/50";
+    } else if (score >= 30) {
+      status = "正常持有 (无溢价小额攒股)";
+      colorClass = "text-yellow-400";
+      bgClass = "bg-yellow-500/20 border-yellow-500/50";
+    } else if (score >= 15) {
+      status = "小额扣款 (估值偏高克制买入)";
+      colorClass = "text-orange-400";
+      bgClass = "bg-orange-500/20 border-orange-500/50";
+    } else {
+      status = "暂停定投 (红盘狂热阶段暂停)";
+      colorClass = "text-red-400";
+      bgClass = "bg-red-500/20 border-red-500/50";
+    }
   } else {
-    status = "清仓 (高风险回避)";
-    colorClass = "text-red-400";
-    bgClass = "bg-red-500/20 border-red-500/50";
+    // Swing View
+    if (score >= 70) {
+      status = "强烈买入 (右侧动能极佳确立)";
+      colorClass = "text-emerald-400";
+      bgClass = "bg-emerald-500/20 border-emerald-500/50";
+    } else if (score >= 50) {
+      status = "买入 (趋势上行突破加仓)";
+      colorClass = "text-emerald-300";
+      bgClass = "bg-emerald-400/20 border-emerald-400/50";
+    } else if (score >= 30) {
+      status = "持有 (波段正常小幅回调)";
+      colorClass = "text-yellow-400";
+      bgClass = "bg-yellow-500/20 border-yellow-500/50";
+    } else if (score >= 15) {
+      status = "减仓 (动能衰竭破位防守)";
+      colorClass = "text-orange-400";
+      bgClass = "bg-orange-500/20 border-orange-500/50";
+    } else {
+      status = "清仓 (右侧止损彻底空仓)";
+      colorClass = "text-red-400";
+      bgClass = "bg-red-500/20 border-red-500/50";
+    }
   }
 
   // Calculate percentage of 80 (market max) purely for the circle
@@ -73,7 +101,7 @@ export const ScoreCard: React.FC<ScoreCardProps> = ({ score, threshold, onThresh
           />
         </svg>
         <div className="absolute flex flex-col items-center justify-center">
-          <span className={cn("text-4xl font-bold tracking-tighter", colorClass.replace('text-', 'text-'))}>
+          <span className={cn("text-4xl font-bold tracking-tighter", colorClass)}>
             {score}
           </span>
           <span className="text-xs text-slate-400 font-medium">/ 80</span>
