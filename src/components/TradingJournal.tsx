@@ -1,9 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Trash2, Target, ArrowDownRight, ArrowUpRight, Download, Upload, ShieldAlert, Check, X, Search, Settings, Pencil, Sparkles, Cpu } from 'lucide-react';
-import { ResponsiveContainer, Cell, PieChart, Pie, Tooltip, AreaChart, Area, XAxis, YAxis, CartesianGrid, Line } from 'recharts';
-import { MarketData, EtfInfo, TradeRecord } from '../types';
+import { MarketData, EtfInfo, TradeRecord, GroupMode } from '../types';
 import { checkIsMarketClosed, getNextTradingDay, getTradingDaysElapsed } from '../lib/calendar';
 import { findEtfBySymbol as findEtfBySymbolShared, isOtcSymbol as isOtcSymbolShared } from '../utils/fund-helpers';
+import TradeStats from './journal/TradeStats';
+import NavSyncStatus from './journal/NavSyncStatus';
+import TradeFilters from './journal/TradeFilters';
+import PortfolioChart from './journal/PortfolioChart';
+import TradeList from './journal/TradeList';
+import TradeGroupCard from './journal/TradeGroupCard';
+import { TradeFormConfirm, TradeFormEdit, TradeFormAdd } from './journal/TradeForm';
+import AiParsePanel from './journal/AiParsePanel';
 
 // Module-level sync guard for OTC NAV backfill — replaces the fragile window.__isSyncingOtcNavs flag.
 // Scope is the page (not window global), resets cleanly on reload, and won't leak across tabs.
@@ -39,7 +46,6 @@ export default function TradingJournal({ markets, onManageStocks }: TradingJourn
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
 
   // Safety confirmation states
-  const [isClearingReal, setIsClearingReal] = useState(false);
   const [deletingRecordId, setDeletingRecordId] = useState<string | null>(null);
   const [editingRecord, setEditingRecord] = useState<TradeRecord | null>(null);
 
@@ -70,6 +76,8 @@ export default function TradingJournal({ markets, onManageStocks }: TradingJourn
   const [filterSymbol, setFilterSymbol] = useState('ALL');
   const [filterType, setFilterType] = useState<'ALL' | 'BUY' | 'SELL' | 'SIP' | 'PENDING'>('ALL');
   const [sortBy, setSortBy] = useState<'time-desc' | 'time-asc' | 'symbol' | 'type'>('time-desc');
+  const [viewMode, setViewMode] = useState<'flat' | 'grouped'>('flat');
+  const [groupMode, setGroupMode] = useState<GroupMode>('category');
   const [activeChartSymbol, setActiveChartSymbol] = useState<string>('');
 
   // Edit form states
@@ -1195,48 +1203,14 @@ export default function TradingJournal({ markets, onManageStocks }: TradingJourn
       )}
 
       {/* Metrics Header */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
-          <div className="text-slate-400 text-[10px] mb-1 uppercase tracking-widest flex items-center select-none">
-            {netRealizedPnL >= 0 ? <ArrowUpRight size={12} className="mr-1 text-emerald-400" /> : <ArrowDownRight size={12} className="mr-1 text-red-400" />}
-            已实现净盈亏
-          </div>
-          <div className={`text-lg font-mono font-bold ${netRealizedPnL >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-            {netRealizedPnL >= 0 ? '+' : ''}{netRealizedPnL.toFixed(2)}
-          </div>
-        </div>
-
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
-          <div className="text-slate-400 text-[10px] mb-1 uppercase tracking-widest flex items-center select-none">
-            {unrealizedPnL >= 0 ? <ArrowUpRight size={12} className="mr-1 text-emerald-400" /> : <ArrowDownRight size={12} className="mr-1 text-red-400" />}
-            总持仓预估浮盈
-          </div>
-          <div className={`text-lg font-mono font-bold ${unrealizedPnL >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-            {unrealizedPnL >= 0 ? '+' : ''}{unrealizedPnL.toFixed(2)}
-          </div>
-        </div>
-
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
-          <div className="text-slate-400 text-[10px] mb-1 uppercase tracking-widest flex items-center select-none">
-             <Target size={12} className="mr-1 text-cyan-400" />
-             平仓胜率
-          </div>
-          <div className="flex items-end gap-1">
-            <div className="text-lg font-mono font-bold text-white">{winRate.toFixed(1)}%</div>
-            <div className="text-[10px] text-slate-500 mb-0.5 font-mono">({exactWins}/{exactLosses})</div>
-          </div>
-        </div>
-
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
-          <div className="text-slate-400 text-[10px] mb-1 uppercase tracking-widest flex items-center select-none">
-             <ArrowDownRight size={12} className="mr-1 text-yellow-500" />
-             累计手续费
-          </div>
-          <div className="text-lg font-mono font-bold text-yellow-500">
-            ¥{totalFees.toFixed(4)}
-          </div>
-        </div>
-      </div>
+      <TradeStats
+        netRealizedPnL={netRealizedPnL}
+        unrealizedPnL={unrealizedPnL}
+        winRate={winRate}
+        exactWins={exactWins}
+        exactLosses={exactLosses}
+        totalFees={totalFees}
+      />
 
       {/* 📊 Buy/Sell Point Placement Accuracy Panel */}
       <div className="bg-white/5 border border-white/10 rounded-2xl p-6 relative overflow-hidden backdrop-blur-md">
@@ -1496,354 +1470,70 @@ export default function TradingJournal({ markets, onManageStocks }: TradingJourn
            </div>
         </div>
 
-         {/* AI Smart Import Block */}
-         <div className="mb-6 bg-gradient-to-r from-emerald-500/10 via-indigo-500/10 to-transparent border border-emerald-500/20 p-5 rounded-2xl space-y-4">
-           {/* Header */}
-           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-             <div className="flex items-center gap-2">
-               <div className="bg-emerald-500/15 p-1.5 rounded-lg text-emerald-400 border border-emerald-500/20 animate-pulse">
-                 <Sparkles size={16} />
-               </div>
-               <div>
-                 <span className="font-bold text-xs text-white font-sans">AI 智能辅助记账识单</span>
-                 <p className="text-[10px] text-slate-500 mt-0.5">
-                   支持输入一句话描述，或拖入/粘贴交易成交单、券商截图，由 AI 自动解析并填充下表。
-                 </p>
-               </div>
-             </div>
-             
-             {/* Engine feedback indicator */}
-             <div className="text-[10px] font-mono font-semibold px-2.5 py-1 rounded bg-black/40 border border-white/5 text-slate-400 flex items-center gap-1.5 shrink-0">
-               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
-               当前引擎: <span className="text-emerald-400">{
-                 (localStorage.getItem('ai_default_provider') || 'gemini').toUpperCase()
-               }</span>
-             </div>
-           </div>
+         <AiParsePanel
+           aiTextInput={aiTextInput}
+           aiImgData={aiImgData}
+           isAiParsing={isAiParsing}
+           onAiTextInputChange={setAiTextInput}
+           onAiImgDataChange={setAiImgData}
+           onDragOver={handleImageDragOver}
+           onDrop={handleImageDrop}
+           onImageSelect={handleImageSelect}
+           onSubmit={handleAiParseSubmit}
+         />
 
-           {/* Input panel row */}
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-             {/* Text input */}
-             <div className="space-y-1.5">
-               <label className="text-[10px] text-slate-400 font-semibold block uppercase">一句话极速描述</label>
-               <textarea
-                 rows={3}
-                 value={aiTextInput}
-                 onChange={(e) => setAiTextInput(e.target.value)}
-                 placeholder="例：今天以1.312元买入纳指ETF五千三百份，手续费0.2元，日期是2月19日。"
-                 className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-emerald-500 font-sans resize-none leading-relaxed"
-               />
-             </div>
-
-             {/* Screenshot upload */}
-             <div className="space-y-1.5">
-               <label className="text-[10px] text-slate-400 font-semibold block uppercase">成交截图识别 (Drag or Paste)</label>
-               <div 
-                 onDragOver={handleImageDragOver}
-                 onDrop={handleImageDrop}
-                 onClick={() => document.getElementById('ai_image_selector')?.click()}
-                 className={`border border-dashed rounded-xl h-[76px] flex flex-col items-center justify-center cursor-pointer transition-all ${
-                   aiImgData ? 'border-emerald-500/40 bg-emerald-500/5' : 'border-white/10 hover:border-white/25 bg-black/20'
-                 }`}
-               >
-                 <input 
-                   id="ai_image_selector" 
-                   type="file" 
-                   accept="image/*" 
-                   className="hidden" 
-                   onChange={handleImageSelect} 
-                 />
-                 {aiImgData ? (
-                   <div className="flex items-center gap-3 px-4 w-full">
-                     <img src={aiImgData} className="w-10 h-10 object-cover rounded-lg border border-white/10" referrerPolicy="no-referrer" />
-                     <div className="text-left flex-1 truncate">
-                       <span className="text-[10px] text-emerald-400 font-bold block font-sans">已成功载入成交截图</span>
-                       <span className="text-[9px] text-slate-500 block truncate">点击或拖拽可重新上传</span>
-                     </div>
-                     <button 
-                       type="button" 
-                       onClick={(e) => { e.stopPropagation(); setAiImgData(null); }}
-                       className="text-[10px] font-bold text-slate-500 hover:text-red-400 shrink-0 bg-slate-800/40 px-2 py-1 rounded font-sans"
-                     >
-                       清空图片
-                     </button>
-                   </div>
-                 ) : (
-                   <div className="text-center">
-                     <span className="text-[10px] text-slate-400 font-bold block font-sans">拖拽/粘贴或点击上传成交单截图</span>
-                     <span className="text-[9px] text-slate-600 block mt-0.5">支持主流券商交易完成状态图 (限20MB)</span>
-                   </div>
-                 )}
-               </div>
-             </div>
-           </div>
-
-           {/* Submit */}
-           <div className="flex justify-end pt-1">
-             <button
-               type="button"
-               disabled={isAiParsing || (!aiTextInput && !aiImgData)}
-               onClick={handleAiParseSubmit}
-               className={`text-xs font-bold px-5 py-2.5 rounded-xl transition-all shadow-md flex items-center gap-1.5 ${
-                 (isAiParsing) 
-                   ? 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed' 
-                   : (!aiTextInput && !aiImgData)
-                     ? 'bg-white/5 text-slate-600 border border-white/10 cursor-not-allowed'
-                     : 'bg-emerald-500 hover:bg-emerald-400 text-slate-900 active:scale-95 shadow-emerald-500/10 hover:shadow-emerald-500/20'
-               }`}
-             >
-               {isAiParsing ? (
-                 <>
-                   <Cpu size={14} className="animate-spin text-emerald-400" />
-                   AI 正在提炼账单细节...
-                 </>
-               ) : (
-                 <>
-                   <Cpu size={14} />
-                   AI 智能解析并自动填表
-                 </>
-               )}
-             </button>
-           </div>
-         </div>
-
-        <form onSubmit={addRecord} className="bg-black/20 p-5 rounded-xl border border-white/5 space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-            
-            {/* Market Link Selector */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs text-slate-400 font-semibold">关联母市场板块</label>
-              <select
-                value={selectedMarketId}
-                onChange={e => {
-                  setSelectedMarketId(e.target.value);
-                  // Auto fill first option symbol of the selected market to prevent disjoint states
-                  const relevantEtfs = e.target.value === 'ALL' 
-                    ? allEtfs 
-                    : (markets.find(m => m.id === e.target.value)?.etfs || []);
-                  if (relevantEtfs.length > 0) {
-                    handleSymbolChange(relevantEtfs[0].symbol);
-                  }
-                }}
-                className="bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-500/50"
-              >
-                <option value="ALL">全部关联标的 (ALL)</option>
-                {markets.map(m => (
-                  <option key={m.id} value={m.id}>{m.name}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Direct Trade Type Selection */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs text-slate-400 font-semibold">动作类型</label>
-              <select 
-                value={type}
-                onChange={e => setType(e.target.value as any)}
-                className="bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-emerald-500/50"
-              >
-                {tradeMode === 'OTC' ? (
-                  <>
-                    <option value="BUY">基金申购 🟢</option>
-                    <option value="SIP">定时定投 (SIP) 🔄</option>
-                    <option value="SELL">基金赎回 🔴</option>
-                  </>
-                ) : (
-                  <>
-                    <option value="BUY">普通买入 🟢</option>
-                    <option value="SIP">定投买入 (SIP) 🔄</option>
-                    <option value="SELL">资金卖出 🔴</option>
-                  </>
-                )}
-              </select>
-            </div>
-
-            {/* Symbols listing */}
-            <div className="flex flex-col gap-1.5 col-span-1 sm:col-span-2">
-              <label className="text-xs text-slate-400 font-semibold flex items-center justify-between">
-                <span>交易标的代码</span>
-                <span className="text-[10px] text-slate-500">输入代码/首字母快速检索</span>
-              </label>
-              <div className="relative">
-                <input 
-                  list="journal_etfs_list"
-                  value={symbol}
-                  onChange={e => {
-                    handleSymbolChange(e.target.value);
-                  }}
-                  onBlur={() => verifySymbolCode(symbol)}
-                  placeholder="如: 513100 或 f_016452"
-                  className="w-full bg-slate-900 border border-white/10 rounded-lg pl-3 pr-10 py-2 text-sm text-slate-100 focus:outline-none focus:border-emerald-500/50 font-mono"
-                />
-                <datalist id="journal_etfs_list">
-                  {uniqueEtfsToShow.map(e => (
-                    <option key={e.symbol} value={e.symbol}>{e.name} ({e.symbol})</option>
-                  ))}
-                </datalist>
-
-                {verifyingSymbol && (
-                  <div className="absolute right-3 top-2.5 flex items-center justify-center">
-                    <Cpu size={14} className="text-emerald-400 animate-spin" />
-                  </div>
-                )}
-                
-                {symbolCheckResult && !symbolCheckResult.hasConflict && (
-                  <div className="absolute right-3 top-2.5 flex items-center justify-center text-emerald-400">
-                    <Check size={14} />
-                  </div>
-                )}
-              </div>
-
-              {symbolCheckResult && !symbolCheckResult.hasConflict && (
-                <div className="text-[10px] text-emerald-400 mt-1 font-sans flex items-center gap-1 animate-in fade-in">
-                  <span>✨ 官方三源交叉验证无误：<strong>{symbolCheckResult.name}</strong> ({symbolCheckResult.assetType === 'OTC' ? '场外公募型配资' : '场内交易品种'})</span>
-                </div>
-              )}
-            </div>
-
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-4 pt-1">
-            
-            {/* Fees */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs text-slate-400 font-semibold">自定摩擦费率 (%)</label>
-              <input 
-                type="number" 
-                step="any"
-                value={feeRate}
-                onChange={e => {
-                  setFeeRate(e.target.value);
-                  recalculateWithNewFees(e.target.value, customFee);
-                }}
-                className="bg-slate-900 border border-orange-500/20 rounded-lg px-3 py-2 text-sm text-orange-400 focus:outline-none focus:border-orange-500 bg-orange-500/5 font-mono"
-              />
-            </div>
-
-            {/* Exact Fee Override */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs text-slate-400 font-semibold flex items-center justify-between">
-                <span>精确手续费 (元)</span>
-                <span className="text-[10px] text-orange-500/55">覆盖费率</span>
-              </label>
-              <input 
-                type="number" 
-                step="any"
-                value={customFee}
-                onChange={e => {
-                  setCustomFee(e.target.value);
-                  recalculateWithNewFees(feeRate, e.target.value);
-                }}
-                placeholder="选填精确规费(元)"
-                className="bg-slate-900 border border-emerald-500/20 rounded-lg px-3 py-2 text-sm text-emerald-400 focus:outline-none focus:border-emerald-500 bg-emerald-500/5 font-mono placeholder:text-slate-600"
-              />
-            </div>
-
-            {/* Trading Date */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs text-slate-400 font-semibold">交易归档时间</label>
-              <input 
-                type="date"
-                value={date}
-                onChange={e => setDate(e.target.value)}
-                className="bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-500/50 font-mono"
-              />
-            </div>
-
-            {/* Price input */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs text-slate-400 font-semibold flex items-center justify-between">
-                <span>{tradeMode === 'OTC' ? '成交扣减净值' : '成交单价 (元)'}</span>
-                {!isPending && allEtfs.some(e => e.symbol === symbol) && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const matched = findEtfBySymbol(symbol);
-                      if (matched && matched.price) {
-                        handlePriceChangeHelper(matched.price.toString());
-                        showToast(`⭐ 已成功填入实时价: ${matched.price}`);
-                      } else {
-                        showToast(`❌ 未能查询到该标的的实时最新价`, 'error');
-                      }
-                    }}
-                    className="text-[10px] text-cyan-400 hover:text-cyan-300 font-medium decoration-dotted underline"
-                  >
-                    实时价
-                  </button>
-                )}
-              </label>
-              <input 
-                type="number" 
-                step="0.0001"
-                value={isPending && tradeMode === 'OTC' && type !== 'SELL' ? '' : price}
-                disabled={isPending && tradeMode === 'OTC' && type !== 'SELL'}
-                onChange={e => handlePriceChangeHelper(e.target.value)}
-                placeholder={isPending && tradeMode === 'OTC' && type !== 'SELL' ? '待公布后确认' : '建仓/结算交易价'}
-                className={`bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500/50 w-full font-mono ${isPending && tradeMode === 'OTC' && type !== 'SELL' ? 'opacity-50 cursor-not-allowed bg-slate-950 text-slate-500' : ''}`}
-              />
-            </div>
-
-            {/* Amount Input */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs text-slate-400 font-semibold">
-                {type === 'SELL' ? '回笼账款金额 (元)' : '注入资金/申购总额 (元)'}
-              </label>
-              <input 
-                type="number" 
-                step="0.01"
-                value={totalAmount}
-                onChange={e => recalculateFromAmount(e.target.value)}
-                placeholder="输入交易本金"
-                className="bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500/50 w-full font-mono placeholder:text-slate-600"
-              />
-            </div>
-
-            {/* Shares Input */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs text-slate-400 font-semibold">
-                {isPending && tradeMode === 'OTC' && type !== 'SELL' ? '自动估算/待确认' : '成交份额 (份)'}
-              </label>
-              <input 
-                type="number" 
-                step="any"
-                value={isPending && tradeMode === 'OTC' && type !== 'SELL' ? '' : shares}
-                disabled={isPending && tradeMode === 'OTC' && type !== 'SELL'}
-                onChange={e => recalculateFromShares(e.target.value)}
-                placeholder={isPending && tradeMode === 'OTC' && type !== 'SELL' ? '待确权后入账' : '所换得的单位份额'}
-                className={`bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500/50 w-full font-mono placeholder:text-slate-600 ${isPending && tradeMode === 'OTC' && type !== 'SELL' ? 'opacity-50 cursor-not-allowed bg-slate-950 text-slate-500' : ''}`}
-              />
-            </div>
-
-          </div>
-
-          {/* Pending confirmation checkbox for OTC trades */}
-          {tradeMode === 'OTC' && type !== 'SELL' && (
-            <div className="flex items-center gap-2 bg-yellow-500/5 p-3 rounded-xl border border-yellow-500/15">
-              <input
-                type="checkbox"
-                id="pending_confirmation_checkbox"
-                checked={isPending}
-                onChange={e => setIsPending(e.target.checked)}
-                className="rounded border-slate-700 bg-slate-900 text-yellow-500 focus:ring-yellow-500/50 w-4 h-4 cursor-pointer"
-              />
-              <label htmlFor="pending_confirmation_checkbox" className="text-xs text-yellow-400 font-semibold cursor-pointer select-none">
-                场外交易：暂不确定最终成交价与份额 (等净值确认后再做对账过账，适合 QDII 等 T+1 / T+2 公募基金)
-              </label>
-            </div>
-          )}
-
-          <div className="flex items-center justify-between pt-2 border-t border-white/5">
-            <span className="text-[11px] text-slate-500 font-mono">
-              [类型: {tradeMode === 'OTC' ? '场外OTC认申' : '场内交易所撮合'}] [费度: {feeRate}%]
-            </span>
-            <button 
-              type="submit"
-              className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold px-5 py-2 rounded-lg text-xs transition-all flex items-center shadow-lg shadow-emerald-500/10 active:scale-95"
-            >
-              <Plus size={14} className="mr-1" /> 保存记录
-            </button>
-          </div>
-        </form>
+        <TradeFormAdd
+          selectedMarketId={selectedMarketId}
+          symbol={symbol}
+          type={type}
+          tradeMode={tradeMode}
+          price={price}
+          shares={shares}
+          totalAmount={totalAmount}
+          feeRate={feeRate}
+          customFee={customFee}
+          date={date}
+          isPending={isPending}
+          verifyingSymbol={verifyingSymbol}
+          symbolCheckResult={symbolCheckResult}
+          markets={markets}
+          allEtfs={allEtfs}
+          uniqueEtfsToShow={uniqueEtfsToShow}
+          findEtfBySymbol={findEtfBySymbol}
+          showToast={showToast}
+          onSelectedMarketIdChange={setSelectedMarketId}
+          onSymbolChange={handleSymbolChange}
+          onTypeChange={v => setType(v)}
+          onPriceChange={handlePriceChangeHelper}
+          onTotalAmountChange={recalculateFromAmount}
+          onSharesChange={recalculateFromShares}
+          onFeeRateChange={setFeeRate}
+          onCustomFeeChange={setCustomFee}
+          onDateChange={setDate}
+          onIsPendingChange={setIsPending}
+          onVerifySymbol={verifySymbolCode}
+          onMarketChange={marketId => {
+            const relevantEtfs = marketId === 'ALL'
+              ? allEtfs
+              : (markets.find(m => m.id === marketId)?.etfs || []);
+            if (relevantEtfs.length > 0) {
+              handleSymbolChange(relevantEtfs[0].symbol);
+            }
+          }}
+          onRecalcFromAmount={recalculateFromAmount}
+          onRecalcFromShares={recalculateFromShares}
+          onRecalcFees={recalculateWithNewFees}
+          onSubmit={addRecord}
+          onFillRealtimePrice={() => {
+            const matched = findEtfBySymbol(symbol);
+            if (matched && matched.price) {
+              handlePriceChangeHelper(matched.price.toString());
+              showToast(`⭐ 已成功填入实时价: ${matched.price}`);
+            } else {
+              showToast(`❌ 未能查询到该标的的实时最新价`, 'error');
+            }
+          }}
+        />
       </div>
 
       {/* 待对账交易快速通道 */}
@@ -1876,866 +1566,141 @@ export default function TradingJournal({ markets, onManageStocks }: TradingJourn
       )}
 
       {/* 智能对账及纠错后台服务状态显示 */}
-      {navSyncLogs.length > 0 && (
-        <div className="bg-[#0b1716] border border-emerald-500/15 rounded-2xl p-5 space-y-3 animate-in fade-in duration-300">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-duration-1000"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-              </div>
-              <h4 className="text-xs font-bold text-emerald-400 font-sans uppercase tracking-wider flex items-center gap-1">
-                <span>🔄 公募基金智能纠错对账引擎 (Auto-Syncing Engine)</span>
-              </h4>
-            </div>
-            <span className="text-[10px] text-slate-500 font-mono">
-              后台自动轮询纠错 · 实现T+2绝对合规计账
-            </span>
-          </div>
-          <div className="max-h-24 overflow-y-auto space-y-1.5 pr-1 font-mono">
-            {navSyncLogs.slice(-4).map((log, index) => (
-              <div key={index} className="flex gap-2 text-[11px] leading-relaxed animate-in fade-in slide-in-from-left-1 duration-150">
-                <span className="text-slate-600">»</span>
-                <span className={`font-medium ${
-                  log.type === 'syncing' ? 'text-amber-400 animate-pulse' :
-                  log.type === 'success' ? 'text-emerald-400 font-bold' : 'text-slate-400'
-                }`}>
-                  {log.message}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      <NavSyncStatus logs={navSyncLogs} />
 
       {/* Historical Ledger Record Panel */}
       <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <h3 className="text-sm font-bold text-slate-300 uppercase tracking-widest">历史收支核销流水</h3>
-            
-            {/* Filter selectors to reduce clutter */}
-            <select
-              value={filterType}
-              onChange={e => setFilterType(e.target.value as any)}
-              className="bg-slate-950 border border-white/5 rounded px-2 py-1 text-[10px] text-slate-400 font-sans focus:outline-none focus:border-emerald-500/50"
-            >
-              <option value="ALL">全部操作 (ALL)</option>
-              <option value="BUY">普通买入</option>
-              <option value="SIP">定投买入</option>
-              <option value="SELL">单边卖出</option>
-              <option value="PENDING">待对账确认</option>
-            </select>
+        <TradeFilters
+          filterType={filterType}
+          sortBy={sortBy}
+          onFilterTypeChange={v => setFilterType(v)}
+          onSortByChange={v => setSortBy(v)}
+          hasRecords={records.length > 0}
+          onClear={() => {
+            clearRecords();
+            showToast('🗑️ 全部交易流水已清空', 'info');
+          }}
+        />
 
-            {/* Sort selectors */}
-            <select
-              value={sortBy}
-              onChange={e => setSortBy(e.target.value as any)}
-              className="bg-slate-950 border border-white/5 rounded px-2 py-1 text-[10px] text-slate-400 font-sans focus:outline-none focus:border-emerald-500/50"
+        {/* 视图模式切换：平铺表格 / 分组折叠 */}
+        {records.length > 0 && (
+          <div className="flex items-center gap-2 mb-3">
+            <button
+              onClick={() => setViewMode('flat')}
+              className={`text-[10px] px-2.5 py-1 rounded-lg font-bold transition-colors ${viewMode === 'flat' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25' : 'text-slate-500 hover:text-slate-300 border border-transparent'}`}
             >
-              <option value="time-desc">⏳ 交易时间降序 (最新在前)</option>
-              <option value="time-asc">⌛ 交易时间升序 (最早在前)</option>
-              <option value="symbol">🗂️ 按资产代码分类 (A-Z)</option>
-              <option value="type">🔄 按买/卖类型聚类</option>
-            </select>
+              平铺表格
+            </button>
+            <button
+              onClick={() => setViewMode('grouped')}
+              className={`text-[10px] px-2.5 py-1 rounded-lg font-bold transition-colors ${viewMode === 'grouped' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25' : 'text-slate-500 hover:text-slate-300 border border-transparent'}`}
+            >
+              分组折叠
+            </button>
+            {viewMode === 'grouped' && (
+              <select
+                value={groupMode}
+                onChange={e => setGroupMode(e.target.value as GroupMode)}
+                className="bg-slate-950 border border-white/5 rounded px-2 py-1 text-[10px] text-slate-400 font-sans focus:outline-none focus:border-emerald-500/50"
+              >
+                <option value="category">大类 → 基金</option>
+                <option value="source">定投 vs 手动</option>
+                <option value="month">按月份</option>
+                <option value="status">按状态</option>
+              </select>
+            )}
           </div>
+        )}
 
-          {records.length > 0 && (
-            <div className="flex items-center">
-              {isClearingReal ? (
-                <div className="flex items-center gap-2 bg-red-950/20 px-3 py-1.5 rounded-lg border border-red-900/50 animate-in fade-in duration-200">
-                  <span className="text-[11px] text-red-400 font-semibold">确定清除全部流水吗？关联持仓也可能清零：</span>
-                  <button 
-                    onClick={() => {
-                      clearRecords();
-                      setIsClearingReal(false);
-                      showToast('🗑️ 全部交易流水已清空', 'info');
-                    }}
-                    className="text-[10px] bg-red-600 hover:bg-red-500 text-slate-950 font-bold px-2 py-0.5 rounded"
-                  >
-                    确定
-                  </button>
-                  <button 
-                    onClick={() => setIsClearingReal(false)}
-                    className="text-[10px] text-slate-400 hover:text-slate-200 bg-slate-900 px-2 py-0.5 rounded border border-white/10"
-                  >
-                    取消
-                  </button>
-                </div>
-              ) : (
-                <button 
-                  onClick={() => setIsClearingReal(true)}
-                  className="text-[10px] text-red-400 hover:text-red-300 px-2.5 py-1 bg-red-400/10 hover:bg-red-400/20 rounded-lg transition-colors font-bold"
-                >
-                  清空流水
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead className="text-[10px] text-slate-500 uppercase border-b border-white/10 select-none">
-              <tr>
-                <th className="pb-3 pl-2">过账日期</th>
-                <th className="pb-3">动作类型</th>
-                <th className="pb-3">资产代码</th>
-                <th className="pb-3 text-right">价格/净值</th>
-                <th className="pb-3 text-right">交易份额</th>
-                <th className="pb-3 text-right">划款扣费</th>
-                <th className="pb-3 text-right pr-2">安全剔除</th>
-              </tr>
-            </thead>
-            <tbody className="text-sm font-mono divide-y divide-white/5">
-              {sortedRecords.map((record, i) => (
-                <tr key={`${record.id}-${i}`} className="hover:bg-white/5 transition-colors group">
-                  <td className="py-3 pl-2 text-xs">
-                    {(() => {
-                      const todayStr = new Date().toISOString().split('T')[0];
-                      const isOTC = isOtcSymbol(record.symbol);
-                      
-                      if (isOTC) {
-                        const { deductionDate, confirmDate, isPostponed } = getOtcDates(record.date, record.symbol);
-                        const isDeductionPending = deductionDate > todayStr;
-                        
-                        return (
-                          <div className="flex flex-col gap-0.5 leading-normal">
-                            <div className="flex items-center gap-1">
-                              <span className="text-[10px] text-slate-500">扣款日:</span>
-                              <span className="text-slate-200 font-mono text-[11px] font-medium">{deductionDate}</span>
-                              {isPostponed && (
-                                <span className="text-[9px] px-1 py-0.2 rounded bg-blue-500/10 text-blue-400 border border-blue-500/15 font-semibold scale-90 origin-left">顺延</span>
-                              )}
-                              {isDeductionPending && (
-                                <span className="text-[9px] px-1 py-0.1 rounded bg-amber-500/10 text-amber-500 border border-amber-500/20 font-semibold scale-90 origin-left">待扣款</span>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <span className="text-[10px] text-slate-500">确权日:</span>
-                              <span className="text-slate-400 font-mono text-[11px]">{confirmDate}</span>
-                              {!isDeductionPending && record.isPending && record.navStatus === 'not_updated' && (
-                                <span className="text-[9px] px-1 py-0.1 rounded bg-red-500/10 text-red-500 border border-red-500/20 font-semibold scale-90 origin-left">未更新</span>
-                              )}
-                              {!isDeductionPending && record.isPending && record.navStatus !== 'not_updated' && (
-                                <span className="text-[9px] px-1 py-0.1 rounded bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 font-semibold scale-90 origin-left animate-pulse">待确权</span>
-                              )}
-                              {!isDeductionPending && !record.isPending && record.navStatus === 'updated' && (
-                                <span className="text-[9px] px-1 py-0.1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold scale-90 origin-left">已更新</span>
-                              )}
-                              {!isDeductionPending && !record.isPending && record.navStatus !== 'updated' && (
-                                <span className="text-[9px] px-1 py-0.1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold scale-90 origin-left">已确权</span>
-                              )}
-                              {isDeductionPending && (
-                                <span className="text-[9px] text-slate-600 scale-90 origin-left">(预期确权)</span>
-                              )}
-                            </div>
-                            {!isDeductionPending && record.isPending && record.navStatus === 'not_updated' && (
-                              <div className="text-[9.5px] text-red-400 font-sans font-semibold mt-0.5 animate-pulse flex items-center gap-1">
-                                <span>⚠️ 净值暂未公布</span>
-                              </div>
-                            )}
-                            {!isDeductionPending && !record.isPending && record.navStatus === 'updated' && (
-                              <div className="text-[10px] text-emerald-500/80 font-sans font-semibold mt-0.5 flex items-center gap-1">
-                                <span>✓ 自动校对已更新</span>
-                              </div>
-                            )}
-                            {isPostponed && (
-                              <div className="text-[9.5px] text-slate-500 font-sans leading-none mt-0.5 opacity-80">
-                                (计划: {record.date} 休市)
-                              </div>
-                            )}
-                          </div>
-                        );
-                      } else {
-                        return <span className="text-slate-400 font-mono">{record.date}</span>;
-                      }
-                    })()}
-                  </td>
-                  <td className={`py-3 text-xs font-bold ${record.type === 'BUY' ? 'text-emerald-400' : 'text-red-400'}`}>
-                    {record.isSip ? '🔄 定投' : (record.type === 'BUY' ? '买入' : '卖出')}
-                  </td>
-                  <td className="py-3 text-xs text-slate-300 font-semibold">{record.symbol}</td>
-                  <td className="py-3 text-right text-xs text-slate-200">
-                    {(() => {
-                      const todayStr = new Date().toISOString().split('T')[0];
-                      const isOTC = isOtcSymbol(record.symbol);
-                      const actualDeductionDate = isOTC ? getNextTradingDay(record.date, record.symbol) : record.date;
-                      
-                      if (actualDeductionDate > todayStr) {
-                        return (
-                          <span className="text-amber-500 font-semibold italic text-[11px]">
-                            扣 ¥{(record.pendingAmount || record.price * record.shares || 0).toFixed(2)} [待扣款]
-                          </span>
-                        );
-                      } else if (record.isPending) {
-                        return (
-                          <span className="text-yellow-500 font-semibold italic text-[11px] animate-pulse">
-                            扣 ¥{(record.pendingAmount || 0).toFixed(2)} [待确认]
-                          </span>
-                        );
-                      } else {
-                        return (
-                          <div className="flex flex-col items-end">
-                            <span className={record.hasConflict ? "text-amber-400 font-bold font-mono" : "text-slate-250 font-mono"}>
-                              ¥{record.price.toFixed(4)}
-                            </span>
-                            {record.hasConflict && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setCorrectionSymbol(record.symbol);
-                                  setCorrectionDate(record.date);
-                                  setCorrectionOriginalNav(record.price.toString());
-                                  setCorrectionNewNav(record.price.toString());
-                                  setCorrectionRecordId(record.id);
-                                  setShowCorrectionModal(true);
-                                }}
-                                className="text-[9px] bg-red-500/20 text-red-300 hover:bg-red-500/35 border border-red-500/30 px-1 py-0.5 rounded cursor-pointer mt-0.5"
-                                title={record.conflictDetails || "多源对账单校准存在冲突"}
-                              >
-                                ⚠️ 对账冲突(点击纠错)
-                              </button>
-                            )}
-                          </div>
-                        );
-                      }
-                    })()}
-                  </td>
-                  <td className="py-3 text-right text-xs text-slate-300">
-                    {record.isPending ? (
-                      <span className="text-slate-500 text-[11px]">- -</span>
-                    ) : (
-                      record.shares.toFixed(2)
-                    )}
-                  </td>
-                  <td className="py-3 text-right text-xs text-yellow-400 font-semibold">¥{record.fee.toFixed(2)}</td>
-                  <td className="py-3 text-right pr-2">
-                    {deletingRecordId === record.id ? (
-                      <div className="flex items-center justify-end gap-1.5 animate-in fade-in duration-100">
-                        <button
-                          onClick={() => {
-                            removeRecord(record.id);
-                            setDeletingRecordId(null);
-                            showToast('🗑️ 该行流水记录已作废', 'info');
-                          }}
-                          className="text-[10px] bg-red-500 hover:bg-red-600 px-2 py-0.5 rounded text-slate-950 font-bold"
-                        >
-                          确认
-                        </button>
-                        <button
-                          onClick={() => setDeletingRecordId(null)}
-                          className="text-[10px] bg-slate-800 text-slate-400 hover:text-slate-200 px-2 py-0.5 rounded border border-white/5"
-                        >
-                          否
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex justify-end items-center gap-1">
-                        {record.isPending && (
-                          <button
-                            onClick={() => setConfirmingPendingRecord(record)}
-                            className="text-[10px] bg-yellow-500 hover:bg-yellow-400 text-slate-950 font-bold px-2 py-0.5 rounded transition-all active:scale-95 flex items-center mr-1"
-                            title="立刻确认该日净值"
-                          >
-                            确认净值
-                          </button>
-                        )}
-                        <button
-                          onClick={() => setEditingRecord(record)}
-                          className="text-slate-400 hover:text-emerald-400 transition-colors p-1.5 rounded-lg sm:opacity-0 group-hover:opacity-100"
-                          title="修改交易记录"
-                        >
-                          <Pencil size={12} />
-                        </button>
-                        <button 
-                          onClick={() => setDeletingRecordId(record.id)}
-                          className="text-slate-500 hover:text-red-400 transition-colors p-1.5 rounded-lg sm:opacity-80 group-hover:opacity-100"
-                          title="删除单条数据"
-                        >
-                          <Trash2 size={12} />
-                        </button>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))}
-              {filteredRecords.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="py-8 text-center text-slate-500 text-xs select-none">暂无对应检索条件的交易记录。</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        {viewMode === 'grouped' ? (
+          <TradeGroupCard
+            records={filteredRecords}
+            markets={markets}
+            findEtfBySymbol={findEtfBySymbol}
+            groupMode={groupMode}
+          />
+        ) : (
+          <TradeList
+            sortedRecords={sortedRecords}
+            filteredRecords={filteredRecords}
+            deletingRecordId={deletingRecordId}
+            isOtcSymbol={isOtcSymbol}
+            getOtcDates={getOtcDates}
+            getNextTradingDay={getNextTradingDay}
+            onConfirmPending={setConfirmingPendingRecord}
+            onEdit={setEditingRecord}
+            onRequestDelete={setDeletingRecordId}
+            onDelete={id => {
+              removeRecord(id);
+              setDeletingRecordId(null);
+              showToast('🗑️ 该行流水记录已作废', 'info');
+            }}
+            onCancelDelete={() => setDeletingRecordId(null)}
+            onReportCorrection={record => {
+              setCorrectionSymbol(record.symbol);
+              setCorrectionDate(record.date);
+              setCorrectionOriginalNav(record.price.toString());
+              setCorrectionNewNav(record.price.toString());
+              setCorrectionRecordId(record.id);
+              setShowCorrectionModal(true);
+            }}
+          />
+        )}
       </div>
 
-      {/* Realtime hold stats */}
-      {Object.values(positions).some(p => p.shares > 0) && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          
-          {/* Detailed positions ledger list */}
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 md:col-span-2">
-            <h3 className="text-sm font-bold text-slate-300 uppercase tracking-widest mb-4">当前持仓组合明细表</h3>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead className="text-[10px] text-slate-500 uppercase border-b border-white/10 select-none">
-                  <tr>
-                    <th className="pb-3 pl-2">标的资产</th>
-                    <th className="pb-3 text-right">持仓总额</th>
-                    <th className="pb-3 text-right">平均买入价</th>
-                    <th className="pb-3 text-right">现时估值</th>
-                    <th className="pb-3 text-right pr-1">累积浮盈/亏</th>
-                  </tr>
-                </thead>
-                <tbody className="text-xs font-mono divide-y divide-white/5">
-                  {Object.entries(positions).filter(([_, pos]) => pos.shares > 0).map(([sym, pos]) => {
-                    const currentEtf = findEtfBySymbol(sym);
-                    const avgCost = pos.cost / pos.shares;
-                    const currentPrice = currentEtf?.price || avgCost;
-                    const unrealized = (currentPrice * pos.shares) - pos.cost - pos.heldBuyFees;
-                    return (
-                      <tr 
-                        key={sym} 
-                        onClick={() => setActiveChartSymbol(sym)}
-                        className={`hover:bg-white/10 cursor-pointer transition-all ${cleanChartSymbol === sym ? 'bg-emerald-500/5 font-semibold text-slate-100' : ''}`}
-                        title="💡 点击此行即可查看该标的历史净值曲线与买卖交易点"
-                      >
-                        <td className="py-3 pl-2 text-slate-300 font-sans font-semibold">
-                          <div className="flex items-center gap-1.5">
-                            {cleanChartSymbol === sym && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />}
-                            <span>{currentEtf ? currentEtf.name : sym}</span>
-                          </div>
-                          <div className="text-[10px] text-slate-500 font-mono mt-0.5">{sym}</div>
-                        </td>
-                        <td className="py-3 text-right text-slate-400">{pos.shares.toFixed(2)}</td>
-                        <td className="py-3 text-right text-slate-400">¥{avgCost.toFixed(4)}</td>
-                        <td className="py-3 text-right text-slate-200">¥{currentPrice.toFixed(4)}</td>
-                        <td className={`py-3 text-right font-bold pr-1 ${unrealized >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                          {unrealized >= 0 ? '+' : ''}{unrealized.toFixed(2)}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Allocation visual display */}
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 flex flex-col justify-between">
-              <div>
-                <h3 className="text-sm font-bold text-slate-300 mb-4 uppercase tracking-widest select-none">
-                  综合资产配置比例
-                </h3>
-                <p className="text-[11px] text-slate-500 mb-2">
-                  实时持仓总市值的占比拆解图。
-                </p>
-              </div>
-              <div className="w-full h-[180px] relative">
-                {pieData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={pieData}
-                        dataKey="value"
-                        nameKey="name"
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={50}
-                        outerRadius={70}
-                        paddingAngle={2}
-                      >
-                        {pieData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.fill} />
-                        ))}
-                      </Pie>
-                      <Tooltip 
-                        contentStyle={{backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px', zIndex: 1000}}
-                        itemStyle={{color: '#fff', fontSize: '11px'}}
-                        formatter={(value: number) => [`¥${value.toLocaleString()}`, '市价资产']}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="flex items-center justify-center h-full text-slate-600 text-xs text-center">
-                    暂无有效持仓数据比例
-                  </div>
-                )}
-              </div>
-          </div>
-
-        </div>
-      )}
-
-      {/* Dynamic Asset NAV Curve and Transaction points Chart overlay */}
-      {selectedSymbolChartData.length > 0 && (
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h3 className="text-sm font-bold text-slate-300 uppercase tracking-widest flex flex-wrap items-center gap-1.5 font-sans">
-                <span>📈 个股/标的历史净值走势与成交买卖观察点</span>
-                <span className="text-xs px-2.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 font-mono font-bold tracking-wide border border-emerald-500/15">
-                  {matchedChartEtfName} ({cleanChartSymbol})
-                </span>
-              </h3>
-              <p className="text-[11px] text-slate-500 mt-1 font-sans">
-                基于指数历史行情与您的实时持仓智能对账。历史价格中：<span className="text-emerald-400 font-semibold">🟢 绿钻</span> 代表买入成交点，<span className="text-red-400 font-semibold">🔴 红钻</span> 代表卖出点位。
-              </p>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] text-slate-500 font-sans uppercase font-bold select-none">切换标的:</span>
-              <select
-                value={cleanChartSymbol}
-                onChange={e => setActiveChartSymbol(e.target.value)}
-                className="bg-slate-950 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-emerald-500/50 font-sans"
-              >
-                {Object.entries(positions).filter(([_, pos]) => pos.shares > 0).map(([sym]) => {
-                  const etfInfo = findEtfBySymbol(sym);
-                  return (
-                    <option key={sym} value={sym}>
-                      💼 {etfInfo ? etfInfo.name : sym} ({sym})
-                    </option>
-                  );
-                })}
-                {Object.entries(positions).filter(([_, pos]) => pos.shares > 0).length > 0 && (
-                  <option disabled>─────── 全部监控列表 ───────</option>
-                )}
-                {allEtfs.map(e => (
-                  <option key={e.symbol} value={e.symbol}>
-                    🔍 {e.name} ({e.symbol})
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="w-full h-[320px] pt-2">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={selectedSymbolChartData} margin={{ top: 15, right: 15, left: -10, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="navPriceColor" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.12}/>
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0.0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
-                <XAxis 
-                  dataKey="date" 
-                  tickLine={false}
-                  axisLine={false}
-                  tick={{ fill: '#475569', fontSize: 10, fontFamily: 'monospace' }}
-                />
-                <YAxis 
-                  domain={['auto', 'auto']}
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={val => `¥${val.toFixed(2)}`}
-                  tick={{ fill: '#475569', fontSize: 10, fontFamily: 'monospace' }}
-                  orientation="right"
-                />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px' }}
-                  content={({ active, payload, label }) => {
-                    if (active && payload && payload.length) {
-                      const data = payload[0].payload;
-                      return (
-                        <div className="bg-[#0f172a]/95 backdrop-blur-md p-3.5 border border-slate-800 rounded-xl space-y-2 text-xs font-mono shadow-2xl">
-                          <p className="text-slate-400 font-sans font-semibold border-b border-white/5 pb-1 mb-1">{label}</p>
-                          <div className="flex justify-between gap-6">
-                            <span className="text-slate-400">参考预估净值:</span>
-                            <span className="text-white font-extrabold">¥{data.price.toFixed(4)}</span>
-                          </div>
-                          {data.buys && data.buys.length > 0 && (
-                            <div className="border-t border-emerald-500/20 pt-1.5 mt-1.5 space-y-1">
-                              {data.buys.map((b: any, idx: number) => (
-                                <div key={idx} className="text-[#10b981] text-[11px] font-sans font-medium flex items-center gap-1">
-                                  <span>🟢 [我的买入] </span>
-                                  <span className="font-mono font-bold text-slate-200">{b.shares.toFixed(4)} 份</span>
-                                  <span>@ ¥{b.price.toFixed(4)}</span>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                          {data.sells && data.sells.length > 0 && (
-                            <div className="border-t border-red-500/20 pt-1.5 mt-1.5 space-y-1">
-                              {data.sells.map((s: any, idx: number) => (
-                                <div key={idx} className="text-[#ef4444] text-[11px] font-sans font-medium flex items-center gap-1">
-                                  <span>🔴 [我的卖出] </span>
-                                  <span className="font-mono font-bold text-slate-200">{s.shares.toFixed(4)} 份</span>
-                                  <span>@ ¥{s.price.toFixed(4)}</span>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    }
-                    return null;
-                  }}
-                />
-                <Area 
-                  type="monotone" 
-                  dataKey="price" 
-                  stroke="#10b981" 
-                  strokeWidth={1.8}
-                  fillOpacity={1} 
-                  fill="url(#navPriceColor)" 
-                  name="参考净值走势"
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="buyPrice" 
-                  stroke="none" 
-                  dot={{ r: 6, fill: '#10b981', stroke: '#1c1917', strokeWidth: 1.5 }} 
-                  name="买入交易点" 
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="sellPrice" 
-                  stroke="none" 
-                  dot={{ r: 6, fill: '#ef4444', stroke: '#1c1917', strokeWidth: 1.5 }} 
-                  name="卖出交易点" 
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      )}
+      <PortfolioChart
+        positions={positions}
+        pieData={pieData}
+        cleanChartSymbol={cleanChartSymbol}
+        selectedSymbolChartData={selectedSymbolChartData}
+        matchedChartEtfName={matchedChartEtfName}
+        activeChartSymbol={activeChartSymbol}
+        onActiveChartSymbolChange={setActiveChartSymbol}
+        findEtfBySymbol={findEtfBySymbol}
+        allEtfs={allEtfs}
+      />
 
       {/* Edit Record Modal */}
       {editingRecord && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-slate-900 border border-slate-700 w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-4 text-slate-200">
-            <div className="flex items-center justify-between pb-3 border-b border-white/10">
-              <div className="flex items-center gap-2">
-                <Pencil className="text-emerald-400" size={16} />
-                <h3 className="font-bold text-sm text-white font-sans">修改历史交易记录</h3>
-              </div>
-              <button 
-                onClick={() => setEditingRecord(null)}
-                className="text-slate-400 hover:text-white bg-slate-800/40 p-1.5 rounded-full transition-colors"
-              >
-                <X size={16} />
-              </button>
-            </div>
-
-            <div className="space-y-3 text-xs">
-              
-              {/* Type and isSip checkbox row */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[10px] text-slate-500 font-semibold uppercase block mb-1">动作类型</label>
-                  <select
-                    value={editType}
-                    onChange={(e) => setEditType(e.target.value as 'BUY' | 'SELL')}
-                    className="w-full bg-black/40 border border-slate-800 rounded-lg p-2 font-semibold text-slate-200 focus:outline-none focus:border-emerald-500"
-                  >
-                    <option value="BUY">买入 (BUY)</option>
-                    <option value="SELL">卖出 (SELL)</option>
-                  </select>
-                </div>
-
-                <div className="flex items-center pt-5 pl-2">
-                  <input
-                    type="checkbox"
-                    id="editIsSip"
-                    checked={editIsSip}
-                    onChange={(e) => setEditIsSip(e.target.checked)}
-                    className="w-3.5 h-3.5 rounded text-emerald-500 bg-slate-800 border-slate-700 mr-2 accent-emerald-400"
-                  />
-                  <label htmlFor="editIsSip" className="text-[10px] text-slate-400 font-semibold cursor-pointer select-none">🔄 划归为定投交易</label>
-                </div>
-              </div>
-
-              {/* Date and Ticker row */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[10px] text-slate-500 font-semibold uppercase block mb-1">过账日期</label>
-                  <input
-                    type="date"
-                    value={editDate}
-                    onChange={(e) => setEditDate(e.target.value)}
-                    className="w-full bg-black/40 border border-slate-800 rounded-lg p-2 text-slate-200 font-mono focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-[10px] text-slate-500 font-semibold uppercase block mb-1">交易代码</label>
-                  <input
-                    value={editSymbol}
-                    onChange={(e) => setEditSymbol(e.target.value)}
-                    placeholder="如 513100"
-                    className="w-full bg-black/40 border border-slate-800 rounded-lg p-2 font-mono text-slate-200 focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
-              </div>
-
-              {/* Amount, rate, custom fee inputs */}
-              {editType === 'BUY' && (
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <label className="text-[10px] text-slate-500 font-semibold block mb-1">申购总额 (元)</label>
-                    <input
-                      type="number"
-                      step="any"
-                      value={editAmount}
-                      onChange={(e) => {
-                        setEditAmount(e.target.value);
-                        handleEditRecalculate(e.target.value, editFeeRate, editPrice, undefined, editSymbol);
-                      }}
-                      className="w-full bg-black/40 border border-slate-800 rounded-lg p-2 text-slate-200 font-mono focus:outline-none focus:border-emerald-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-slate-500 font-semibold block mb-1">费率 (%)</label>
-                    <input
-                      type="number"
-                      step="any"
-                      value={editFeeRate}
-                      onChange={(e) => {
-                        setEditFeeRate(e.target.value);
-                        handleEditRecalculate(editAmount, e.target.value, editPrice, undefined, editSymbol);
-                      }}
-                      className="w-full bg-black/40 border border-slate-800 rounded-lg p-2 text-slate-200 font-mono focus:outline-none focus:border-emerald-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-slate-500 font-semibold block mb-1">手续费 (元)</label>
-                    <input
-                      type="number"
-                      step="any"
-                      value={editFee}
-                      onChange={(e) => {
-                        setEditFee(e.target.value);
-                        handleEditRecalculate(editAmount, editFeeRate, editPrice, e.target.value, editSymbol);
-                      }}
-                      className="w-full bg-black/40 border border-slate-800 rounded-lg p-2 text-slate-200 font-mono focus:outline-none focus:border-emerald-500"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Price, Shares, Fee inputs */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[10px] text-slate-500 font-semibold uppercase block mb-1 flex items-center justify-between">
-                    <span>成交单价/净值 (¥)</span>
-                    {isOtcSymbol(editSymbol) && (
-                      <button
-                        type="button"
-                        disabled={isEditSyncingNav}
-                        onClick={handleEditQueryNav}
-                        className="text-[9px] text-emerald-400 hover:text-emerald-300 font-semibold transition-colors disabled:opacity-50"
-                      >
-                        {isEditSyncingNav ? '查询中...' : '🔍 联网确权净值'}
-                      </button>
-                    )}
-                  </label>
-                  <input
-                    type="number"
-                    step="any"
-                    value={editPrice}
-                    onChange={(e) => {
-                      setEditPrice(e.target.value);
-                      handleEditRecalculate(editAmount, editFeeRate, e.target.value, editFee, editSymbol);
-                    }}
-                    className="w-full bg-black/40 border border-slate-800 rounded-lg p-2 text-slate-200 font-mono focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] text-slate-500 font-semibold uppercase block mb-1">
-                    成交/确权份额 (份)
-                  </label>
-                  <input
-                    type="number"
-                    step="any"
-                    value={editShares}
-                    onChange={(e) => setEditShares(e.target.value)}
-                    placeholder="可输入进行手动纠错"
-                    className="w-full bg-black/40 border border-slate-700 border-dashed rounded-lg p-2 text-slate-200 font-mono focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
-              </div>
-
-              {editType === 'SELL' && (
-                <div>
-                  <label className="text-[10px] text-slate-500 font-semibold block mb-1">手续费用 (元)</label>
-                  <input
-                    type="number"
-                    step="any"
-                    value={editFee}
-                    onChange={(e) => setEditFee(e.target.value)}
-                    className="w-full bg-black/40 border border-slate-800 rounded-lg p-2 text-slate-200 font-mono focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
-              )}
-
-              {/* Quick calculations display */}
-              <div className="bg-black/30 p-2.5 rounded-xl border border-white/5 space-y-1 font-mono text-[10px] text-slate-400">
-                {editType === 'BUY' ? (
-                  <>
-                    <div className="flex justify-between">
-                      <span>入账支付金额 (A):</span>
-                      <span className="text-white font-bold">¥{parseFloat(editAmount || '0').toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>损耗服务费 (开销 R%):</span>
-                      <span className="text-yellow-400">¥{parseFloat(editFee || '0').toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>实投资确认额 (A - F):</span>
-                      <span className="text-emerald-400 font-bold">¥{Math.max(0, parseFloat(editAmount || '0') - parseFloat(editFee || '0')).toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between border-t border-white/5 pt-1 mt-1">
-                      <span>计算总成交增量值:</span>
-                      <span className="text-white">{(parseFloat(editShares) || 0).toFixed(isOtcSymbol(editSymbol) ? 2 : 4)} 份</span>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="flex justify-between">
-                      <span>成交总对价:</span>
-                      <span className="text-white font-bold">¥{((parseFloat(editPrice)||0) * (parseFloat(editShares)||0)).toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>服务扣税息 (F):</span>
-                      <span className="text-red-400">¥{parseFloat(editFee || '0').toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between border-t border-white/5 pt-1 mt-1">
-                      <span>销户实落袋金额:</span>
-                      <span className="text-white">¥{Math.max(0, ((parseFloat(editPrice)||0) * (parseFloat(editShares)||0)) - parseFloat(editFee || '0')).toFixed(2)}</span>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex items-center gap-3 pt-4 border-t border-white/5">
-              <button
-                type="button"
-                onClick={handleSaveEdit}
-                className="flex-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold py-2 rounded-xl transition-all shadow-md active:scale-95 text-xs"
-              >
-                保存修改
-              </button>
-              <button
-                type="button"
-                onClick={() => setEditingRecord(null)}
-                className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold py-2 rounded-xl transition-all text-xs"
-              >
-                放弃修改
-              </button>
-            </div>
-          </div>
-        </div>
+        <TradeFormEdit
+          editType={editType}
+          editIsSip={editIsSip}
+          editDate={editDate}
+          editSymbol={editSymbol}
+          editAmount={editAmount}
+          editFeeRate={editFeeRate}
+          editFee={editFee}
+          editPrice={editPrice}
+          editShares={editShares}
+          isEditSyncingNav={isEditSyncingNav}
+          isOtcSymbol={isOtcSymbol}
+          onEditTypeChange={setEditType}
+          onEditIsSipChange={setEditIsSip}
+          onEditDateChange={setEditDate}
+          onEditSymbolChange={setEditSymbol}
+          onEditAmountChange={setEditAmount}
+          onEditFeeRateChange={setEditFeeRate}
+          onEditFeeChange={setEditFee}
+          onEditPriceChange={setEditPrice}
+          onEditSharesChange={setEditShares}
+          onRecalculate={handleEditRecalculate}
+          onQueryNav={handleEditQueryNav}
+          onSave={handleSaveEdit}
+          onCancel={() => setEditingRecord(null)}
+        />
       )}
 
       {/* 确认场外买入成交价与折算份额 Modal */}
-      {confirmingPendingRecord && (() => {
-        const record = confirmingPendingRecord;
-        const matchedEtf = findEtfBySymbol(record.symbol);
-        const netPrincipal = (record.pendingAmount || 0) - record.fee;
-        const priceVal = parseFloat(pendingConfirmPrice);
-        const computedS = !isNaN(priceVal) && priceVal > 0 ? (netPrincipal / priceVal) : 0;
-
-        return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-slate-900 border border-slate-700 w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-4 text-slate-200">
-              <div className="flex items-center justify-between pb-3 border-b border-white/10">
-                <div className="flex items-center gap-2">
-                  <Check className="text-yellow-400" size={16} />
-                  <h3 className="font-bold text-sm text-white font-sans">确认场外成交净值</h3>
-                </div>
-                <button 
-                  onClick={() => setConfirmingPendingRecord(null)}
-                  className="text-slate-400 hover:text-white bg-slate-800/40 p-1.5 rounded-full transition-colors"
-                >
-                  <X size={16} />
-                </button>
-              </div>
-
-              <div className="space-y-3.5 text-xs">
-                <div className="bg-white/5 p-3 rounded-xl border border-white/5 space-y-1.5">
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">标的代码 / 名称:</span>
-                    <span className="text-white font-semibold font-mono">{record.symbol} {matchedEtf?.name}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">扣款过账日期:</span>
-                    <span className="text-white font-semibold font-mono">{record.date}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">扣划总本金:</span>
-                    <span className="text-yellow-400 font-bold font-mono">¥{(record.pendingAmount || 0).toFixed(2)} 元</span>
-                  </div>
-                  <div className="flex justify-between text-[11px]">
-                    <span className="text-slate-400">扣划损耗佣金:</span>
-                    <span className="text-slate-300 font-mono">¥{record.fee.toFixed(4)} 元</span>
-                  </div>
-                  <div className="flex justify-between border-t border-white/5 pt-1.5 mt-1.5">
-                    <span className="text-slate-400 font-medium">确认实投本金:</span>
-                    <span className="text-emerald-400 font-bold font-mono">¥{netPrincipal.toFixed(4)} 元</span>
-                  </div>
-                </div>
-
-                <div className="space-y-1.5 font-sans">
-                  <label className="text-[11px] text-slate-400 font-semibold uppercase block">输入确认时成交单元净值 (元)</label>
-                  <div className="flex gap-2">
-                    <input
-                      type="number"
-                      step="0.0001"
-                      value={pendingConfirmPrice}
-                      onChange={e => setPendingConfirmPrice(e.target.value)}
-                      placeholder="例如 1.2345"
-                      className="flex-1 bg-black/40 border border-slate-800 rounded-lg p-2.5 font-mono text-slate-200 text-sm focus:outline-none focus:border-yellow-500"
-                    />
-                    {matchedEtf && matchedEtf.price && (
-                      <button
-                        type="button"
-                        onClick={() => setPendingConfirmPrice(String(matchedEtf.price))}
-                        className="bg-slate-800 hover:bg-slate-700 text-slate-300 border border-white/5 font-semibold text-[11px] px-3 py-2 rounded-lg transition-colors"
-                      >
-                        填实时最新价
-                      </button>
-                    )}
-                  </div>
-                  {matchedEtf && matchedEtf.price && (
-                    <span className="text-[10px] text-slate-500 font-mono block">
-                      💡 当前最新实时价预测参考: ¥{matchedEtf.price} (净值一般在当夜20点前公布完毕)
-                    </span>
-                  )}
-                </div>
-
-                <div className="bg-yellow-500/5 p-3 rounded-xl border border-yellow-500/15 flex justify-between font-mono text-xs">
-                  <span className="text-yellow-500 font-semibold">折算实得份额:</span>
-                  <span className="text-white font-extrabold text-sm">{computedS.toFixed(4)} 份</span>
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex items-center gap-3 pt-3 border-t border-white/5">
-                <button
-                  type="button"
-                  onClick={handleConfirmPendingRecord}
-                  className="flex-1 bg-yellow-500 hover:bg-yellow-400 text-slate-950 font-extrabold py-2.5 rounded-xl transition-all shadow-md active:scale-95 text-xs"
-                >
-                  确认对账入账
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setConfirmingPendingRecord(null)}
-                  className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold py-2.5 rounded-xl transition-all text-xs"
-                >
-                  取消
-                </button>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
+      {confirmingPendingRecord && (
+        <TradeFormConfirm
+          record={confirmingPendingRecord}
+          pendingConfirmPrice={pendingConfirmPrice}
+          onPendingConfirmPriceChange={setPendingConfirmPrice}
+          findEtfBySymbol={findEtfBySymbol}
+          onConfirm={handleConfirmPendingRecord}
+          onCancel={() => setConfirmingPendingRecord(null)}
+        />
+      )}
 
       {/* ⚠️ LOUD SYMBOL CONFLICT ALARM MODAL */}
       {showSymbolAlarm && symbolCheckResult && (

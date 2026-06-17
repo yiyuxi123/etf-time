@@ -11,6 +11,8 @@ import {
 import { MarketData, EtfInfo, SipPlan } from '../types';
 import { checkIsMarketClosed, getNextTradingDay, getTradingDaysElapsed } from '../lib/calendar';
 import { findEtfBySymbol as findEtfBySymbolShared, isOtcSymbol as isOtcSymbolShared } from '../utils/fund-helpers';
+import SipCalculator from './sip/SipCalculator';
+import SipPlanForm from './sip/SipPlanForm';
 
 interface SipPlannerProps {
   markets: MarketData[];
@@ -248,13 +250,6 @@ export default function SipPlanner({ markets }: SipPlannerProps) {
       setPlanResearchLoading(prev => ({ ...prev, [plan.id]: false }));
     }
   };
-
-  // Calculator State (for Future Compound Estimator)
-  const [calcInitial, setCalcInitial] = useState(10000);
-  const [calcPeriodAmount, setCalcPeriodAmount] = useState(2000);
-  const [calcFrequency, setCalcFrequency] = useState<'weekly' | 'monthly'>('monthly');
-  const [calcExpectedReturn, setCalcExpectedReturn] = useState(8.5); // Annualized %
-  const [calcYears, setCalcYears] = useState(15);
 
   // Backup / Import file helper element ref or trigger
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -851,50 +846,6 @@ export default function SipPlanner({ markets }: SipPlannerProps) {
     });
   };
 
-  // DCA Calculator logic (Future Projection compound)
-  const calculateDcaProjection = () => {
-    const dataPoints = [];
-    const compoundingPeriodsPerYear = calcFrequency === 'monthly' ? 12 : 52;
-    const periods = calcYears * compoundingPeriodsPerYear;
-    const ratePerPeriod = (calcExpectedReturn / 100) / compoundingPeriodsPerYear;
-    
-    let investedWealth = calcInitial;
-    let compoundedWealth = calcInitial;
-
-    // Loop through each year to avoid visual clutter (just project by year)
-    for (let year = 0; year <= calcYears; year++) {
-      if (year === 0) {
-        dataPoints.push({
-          year: '第 0 年',
-          '只存不入 (本金)': Math.round(investedWealth),
-          '定投累计总本金': Math.round(investedWealth),
-          '复利增长总市值': Math.round(compoundedWealth),
-        });
-        continue;
-      }
-
-      // Progress compounding periods for this year
-      for (let p = 0; p < compoundingPeriodsPerYear; p++) {
-        investedWealth += calcPeriodAmount * (calcFrequency === 'weekly' && compoundingPeriodsPerYear === 12 ? 4.33 : 1);
-        compoundedWealth = (compoundedWealth + calcPeriodAmount) * (1 + ratePerPeriod);
-      }
-
-      dataPoints.push({
-        year: `第 ${year} 年`,
-        '只存不入 (本金)': Math.round(calcInitial),
-        '定投累计总本金': Math.round(investedWealth),
-        '复利增长总市值': Math.round(compoundedWealth),
-      });
-    }
-
-    return dataPoints;
-  };
-
-  const projectionData = calculateDcaProjection();
-  const finalCompoundTotal = projectionData[projectionData.length - 1]['复利增长总市值'];
-  const finalInvestTotal = projectionData[projectionData.length - 1]['定投累计总本金'];
-  const finalEarnedInterest = finalCompoundTotal - finalInvestTotal;
-
   // Real-time Synthetic Historical 24-Month Data Backtest to prove Smart DCA > Standard DCA
   const generateSipBacktestData = () => {
     const months = 24;
@@ -1367,246 +1318,35 @@ export default function SipPlanner({ markets }: SipPlannerProps) {
               <p className="text-xs text-slate-400 mt-1">配置资产跟扣款频次，支持多因子动态智能增减额</p>
             </div>
 
-            <form onSubmit={handleCreatePlan} className="space-y-4 text-xs">
-              <div className="space-y-1.5">
-                <label className="text-slate-400 font-semibold">计划策略名</label>
-                <input 
-                  type="text"
-                  required
-                  value={name}
-                  onChange={e => setName(e.target.value)}
-                  placeholder="如：美股指数长期智能吸筹计划"
-                  className="w-full bg-black/20 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500/50 placeholder:text-slate-600"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <label className="text-slate-400 font-semibold">关联母市场</label>
-                  <select 
-                    value={marketId}
-                    onChange={e => setMarketId(e.target.value)}
-                    className="w-full bg-black/20 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500/50"
-                  >
-                    {markets.map(m => (
-                      <option key={m.id} value={m.id}>{m.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-slate-400 font-semibold">选择标的物</label>
-                  <select 
-                    value={symbol}
-                    onChange={e => setSymbol(e.target.value)}
-                    className="w-full bg-black/20 border border-white/10 rounded-xl px-2.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500/50"
-                  >
-                    {markets.find(m => m.id === marketId)?.etfs.map(e => (
-                      <option key={e.symbol} value={e.symbol}>{e.name.split(' ')[0]} ({e.symbol})</option>
-                    )) || (
-                      <option value="">暂无标的</option>
-                    )}
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <label className="text-slate-400 font-semibold">单期基准额 (元)</label>
-                  <input 
-                    type="number"
-                    required
-                    value={amount}
-                    onChange={e => setAmount(e.target.value)}
-                    placeholder="如 1000"
-                    className="w-full bg-black/20 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500/50 font-mono"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-slate-400 font-semibold">定投周期</label>
-                  <select 
-                    value={frequency}
-                    onChange={e => setFrequency(e.target.value as any)}
-                    className="w-full bg-black/20 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500/50"
-                  >
-                    <option value="daily">每日定投</option>
-                    <option value="weekly">每周定投</option>
-                    <option value="biweekly">每双周定投</option>
-                    <option value="monthly">每月定投</option>
-                  </select>
-                </div>
-              </div>
-
-              {(frequency === 'weekly' || frequency === 'biweekly') && (
-                <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
-                  <label className="text-slate-400 font-semibold flex items-center gap-1">
-                    <span>选定星期几扣划</span>
-                    <span className="text-[10px] text-slate-500 font-normal">(闭市顺延)</span>
-                  </label>
-                  <select 
-                    value={planDayOfWeek}
-                    onChange={e => setPlanDayOfWeek(parseInt(e.target.value, 10))}
-                    className="w-full bg-black/20 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500/50"
-                  >
-                    <option value={1}>周一 (Monday)</option>
-                    <option value={2}>周二 (Tuesday)</option>
-                    <option value={3}>周三 (Wednesday)</option>
-                    <option value={4}>周四 (Thursday)</option>
-                    <option value={5}>周五 (Friday)</option>
-                    <option value={6}>周六 (Saturday - 闭市顺延)</option>
-                    <option value={7}>周日 (Sunday - 闭市顺延)</option>
-                  </select>
-                </div>
-              )}
-
-              <div className="space-y-1.5">
-                <label className="text-slate-400 font-semibold">首次划款起点日</label>
-                <input 
-                  type="date"
-                  required
-                  value={startDate}
-                  onChange={e => setStartDate(e.target.value)}
-                  className="w-full bg-black/20 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500/50 font-mono"
-                />
-              </div>
-
-              {/* AI Real-time Retrieval and Auto-fill Tool */}
-              <div className="pt-1.5 pb-0.5">
-                <button
-                  type="button"
-                  disabled={researchLoading}
-                  onClick={triggerAiResearch}
-                  className={`w-full py-2.5 px-3 border border-dashed rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold transition-all ${
-                    researchLoading 
-                      ? 'border-slate-800 bg-slate-900/40 text-slate-500 cursor-not-allowed'
-                      : 'border-emerald-500/30 bg-emerald-500/5 text-emerald-400 hover:bg-emerald-500/10 active:scale-[0.98]'
-                  }`}
-                >
-                  <Search size={14} className={researchLoading ? "animate-spin" : ""} />
-                  {researchLoading ? 'AI 正在检索该基金属性与休市状态...' : '🔍 让 AI 联网检索最新交易费率与闭市顺延'}
-                </button>
-              </div>
-
-              {/* Research output segment */}
-              {researchResult && (
-                <div className="bg-[#0f172a]/90 border border-cyan-500/20 rounded-2xl p-3.5 space-y-2 text-[11px] leading-relaxed relative overflow-hidden animate-in fade-in duration-200">
-                  <div className="absolute right-0 top-0 bg-cyan-500/10 text-cyan-300 px-2 py-0.5 rounded-bl-xl font-bold scale-[0.85] origin-top-right uppercase tracking-wider font-mono">
-                    AI Grounded
-                  </div>
-                  <div className="flex gap-1.5 items-center font-bold text-cyan-400">
-                    <CheckCircle className="w-3.5 h-3.5" />
-                    <span>AI 联网智能研判报告</span>
-                  </div>
-                  <div className="text-slate-300 mt-1">
-                    针对选定划款日 <strong className="text-white font-mono">{researchResult.queryDate}</strong> 的分析：
-                  </div>
-                  <div className="p-2 rounded-lg bg-black/40 border border-white/5 space-y-1.5 text-slate-300">
-                    <div className="flex justify-between items-center">
-                      <span>今日国内外市场交易状态:</span>
-                      <span className={`font-bold px-1.5 py-0.5 rounded text-[10px] ${researchResult.marketClosedToday ? 'text-red-400 bg-red-400/10' : 'text-emerald-400 bg-emerald-400/10'}`}>
-                        {researchResult.marketClosedToday ? '🔴 闭市休市' : '正常开市交易'}
-                      </span>
-                    </div>
-                    {researchResult.closureReason && (
-                      <div className="flex justify-between text-[10px]">
-                        <span className="text-slate-500">休市原因:</span>
-                        <span className="text-slate-400 font-bold">{researchResult.closureReason}</span>
-                      </div>
-                    )}
-                    <span className="block h-[1px] bg-white/5 my-1" />
-                    <div className="grid grid-cols-2 gap-2 text-[10px]">
-                      <div>
-                        <span className="text-slate-500 block">推荐确认天数</span>
-                        <strong className="text-white font-mono">T+{researchResult.settlementDays} 工作日</strong>
-                      </div>
-                      <div>
-                        <span className="text-slate-500 block">建议交易费率比</span>
-                        <strong className="text-white font-mono">{researchResult.rate}%</strong>
-                      </div>
-                    </div>
-                  </div>
-                  <p className="text-slate-400 text-[10px] mt-1 italic">
-                    <strong>定投可行性评估:</strong> {researchResult.analysis}
-                  </p>
-                </div>
-              )}
-
-              {/* Overridable transaction details parsed dynamically */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <label className="text-slate-400 font-semibold flex items-center gap-1">
-                    <span>交易费率比 (%)</span>
-                  </label>
-                  <input 
-                    type="number"
-                    step="any"
-                    required
-                    value={rate}
-                    onChange={e => setRate(e.target.value)}
-                    placeholder="如 0.15"
-                    className="w-full bg-black/20 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500/50 font-mono"
-                  />
-                  <div className="text-[10px] text-slate-500">场外约 0.15% | 场内约 0.01%</div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-slate-400 font-semibold">份额确认完成时间(开市日)</label>
-                  <select 
-                    value={settlementDays}
-                    onChange={e => setSettlementDays(e.target.value)}
-                    className="w-full bg-black/20 border border-white/10 rounded-xl px-2.5 py-2 text-xs text-platina-200 text-white focus:outline-none focus:border-emerald-500/50"
-                  >
-                    <option value="1">T+1 工作日确认份额</option>
-                    <option value="2">T+2 工作日份额(场外QDII等)</option>
-                    <option value="3">T+3 延迟工作日确认</option>
-                  </select>
-                  <div className="text-[10px] text-slate-500">节假日闭市时顺延确认</div>
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-slate-400 font-semibold">本基金单日申购最大限额 (元)</label>
-                <input 
-                  type="number"
-                  required
-                  value={purchaseLimit}
-                  onChange={e => setPurchaseLimit(e.target.value)}
-                  placeholder="无限制填 1000000"
-                  className="w-full bg-black/20 border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-emerald-500/50 font-mono"
-                />
-                <div className="text-[10px] text-slate-500">超额可能导致扣款被拒/定投完成度不全</div>
-              </div>
-
-              {/* Smart DCA Toggle */}
-              <div className="p-3.5 bg-emerald-500/5 border border-emerald-500/10 rounded-2xl space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <div className="font-bold text-emerald-400 flex items-center gap-1">
-                    <Sparkles size={14} />
-                    <span>启用智能多因子调节 (SMART-DCA)</span>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      checked={isSmart}
-                      onChange={e => setIsSmart(e.target.checked)}
-                      className="sr-only peer" 
-                    />
-                    <div className="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
-                  </label>
-                </div>
-                <p className="text-[10px] text-slate-400 leading-relaxed">
-                  <strong>如何决策?</strong> 开启后系统自动监控估值评分，若分高估低则自动增加申购系数，高位泡沫溢价高则防御性低位买，抹均成本，增强中长期总阿尔法值！
-                </p>
-              </div>
-
-              <button
-                type="submit"
-                className="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-900 font-bold py-3.5 px-4 rounded-xl transition-all duration-200 shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-1.5 text-sm font-sans"
-              >
-                <Plus size={16} /> 保存创建定投策略
-              </button>
-            </form>
+            <SipPlanForm
+              name={name}
+              marketId={marketId}
+              symbol={symbol}
+              amount={amount}
+              frequency={frequency}
+              planDayOfWeek={planDayOfWeek}
+              isSmart={isSmart}
+              startDate={startDate}
+              rate={rate}
+              settlementDays={settlementDays}
+              purchaseLimit={purchaseLimit}
+              researchLoading={researchLoading}
+              researchResult={researchResult}
+              markets={markets}
+              onNameChange={setName}
+              onMarketIdChange={setMarketId}
+              onSymbolChange={setSymbol}
+              onAmountChange={setAmount}
+              onFrequencyChange={v => setFrequency(v)}
+              onPlanDayOfWeekChange={v => setPlanDayOfWeek(v)}
+              onIsSmartChange={setIsSmart}
+              onStartDateChange={setStartDate}
+              onRateChange={setRate}
+              onSettlementDaysChange={setSettlementDays}
+              onPurchaseLimitChange={setPurchaseLimit}
+              onTriggerAiResearch={triggerAiResearch}
+              onSubmit={handleCreatePlan}
+            />
           </div>
         </div>
       </div>
@@ -1907,173 +1647,7 @@ export default function SipPlanner({ markets }: SipPlannerProps) {
       </div>
 
       {/* DCA Projection / Compound Tool Area */}
-      <div className="bg-white/5 border border-white/10 rounded-3xl p-6 md:p-8 space-y-8">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-           <div>
-              <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                 <Calculator className="text-emerald-400" />
-                 长期财富奇迹：定投收益未来复利模拟器
-              </h3>
-              <p className="text-xs text-slate-400 mt-1">计算未来若干年内，零钱定投累积的滚雪球资产</p>
-           </div>
-           
-           <div className="text-slate-500 text-xs flex items-center gap-2">
-              <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full" />
-              <span>复利预期</span>
-              <span className="w-2.5 h-2.5 bg-blue-500 rounded-full ml-2" />
-              <span>本金累计</span>
-           </div>
-        </div>
-
-        {/* Dynamic Calculator Form Box */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 bg-black/20 p-4 rounded-2xl border border-white/5">
-           <div className="flex flex-col gap-1.5">
-              <label className="text-xs text-slate-400">初始启动资金 (元)</label>
-              <input 
-                type="number"
-                value={calcInitial}
-                onChange={e => setCalcInitial(Math.max(0, parseInt(e.target.value) || 0))}
-                className="bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-emerald-500"
-              />
-           </div>
-           
-           <div className="flex flex-col gap-1.5">
-              <label className="text-xs text-slate-400">每期定投投入 (元)</label>
-              <input 
-                type="number"
-                value={calcPeriodAmount}
-                onChange={e => setCalcPeriodAmount(Math.max(0, parseInt(e.target.value) || 0))}
-                className="bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-emerald-500"
-              />
-           </div>
-
-           <div className="flex flex-col gap-1.5">
-              <label className="text-xs text-slate-400">定投周期频率</label>
-              <select 
-                value={calcFrequency}
-                onChange={e => setCalcFrequency(e.target.value as any)}
-                className="bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
-              >
-                <option value="weekly">按周买入</option>
-                <option value="monthly">按月买入</option>
-              </select>
-           </div>
-
-           <div className="flex flex-col gap-1.5">
-              <label className="text-xs text-slate-400">平均复合年回报 (%)</label>
-              <input 
-                type="number"
-                step="0.5"
-                value={calcExpectedReturn}
-                onChange={e => setCalcExpectedReturn(Math.max(0, parseFloat(e.target.value) || 0))}
-                className="bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-emerald-500"
-              />
-           </div>
-
-           <div className="flex flex-col gap-1.5 col-span-2 md:col-span-1">
-              <label className="text-xs text-slate-400">持有执行期 (年)</label>
-              <input 
-                type="number"
-                value={calcYears}
-                onChange={e => setCalcYears(Math.min(50, Math.max(1, parseInt(e.target.value) || 1)))}
-                className="bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-emerald-500"
-              />
-           </div>
-        </div>
-
-        {/* Visual Wealth Stack and Recharts Area */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-           
-           <div className="lg:col-span-4 space-y-4">
-              <div className="bg-emerald-500/10 border border-emerald-500/20 p-5 rounded-2xl">
-                 <div className="text-[10px] text-emerald-400 uppercase tracking-widest font-mono">预计期末总资产值</div>
-                 <div className="text-2xl font-bold font-mono text-emerald-300 mt-1">
-                    ¥{finalCompoundTotal.toLocaleString()}
-                 </div>
-                 <p className="text-[10px] text-slate-400 mt-2">
-                    在第 {calcYears} 年末，得益于年化 {calcExpectedReturn}% 滚动的复利成长，资产最终实现大步级跨越。
-                 </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                 <div className="bg-white/5 border border-white/5 p-4 rounded-xl">
-                    <div className="text-[10px] text-slate-500 font-mono">累计本金总投入</div>
-                    <div className="text-lg font-bold font-mono text-white mt-1">
-                       ¥{finalInvestTotal.toLocaleString()}
-                    </div>
-                 </div>
-                 <div className="bg-white/5 border border-white/5 p-4 rounded-xl">
-                    <div className="text-[10px] text-cyan-400 font-mono">累计产生的复利盈余</div>
-                    <div className="text-lg font-bold font-mono text-cyan-400 mt-1">
-                       +¥{finalEarnedInterest.toLocaleString()}
-                    </div>
-                 </div>
-              </div>
-
-              <div className="text-[11px] text-slate-400 leading-relaxed bg-[#0A0D14]/80 p-4 rounded-xl border border-white/5">
-                 <div className="flex gap-2 items-start">
-                    <ArrowUpRight className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                    <div>
-                       <span className="text-emerald-300 font-bold">收益比倍增：</span>
-                       本金投入 ¥{finalInvestTotal.toLocaleString()} 元，通过收益产生复利膨胀，最终利息比占本金 of <strong className="text-white font-mono">{(finalEarnedInterest / finalInvestTotal * 100).toFixed(1)}%</strong>。
-                    </div>
-                 </div>
-              </div>
-           </div>
-
-           <div className="lg:col-span-8">
-              <div className="w-full h-[320px] bg-black/10 rounded-2xl p-4 border border-white/5 relative">
-                 <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart
-                       data={projectionData}
-                       margin={{ top: 10, right: 10, left: 20, bottom: 0 }}
-                    >
-                       <defs>
-                          <linearGradient id="colorInterest" x1="0" y1="0" x2="0" y2="1">
-                             <stop offset="5%" stopColor="#10b981" stopOpacity={0.4}/>
-                             <stop offset="95%" stopColor="#10b981" stopOpacity={0.0}/>
-                          </linearGradient>
-                          <linearGradient id="colorPrincipal" x1="0" y1="0" x2="0" y2="1">
-                             <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2}/>
-                             <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.0}/>
-                          </linearGradient>
-                       </defs>
-                       <CartesianGrid strokeDasharray="3 3" stroke="#ffffff0a" vertical={false} />
-                       <XAxis dataKey="year" stroke="#475569" fontSize={11} tickLine={false} />
-                       <YAxis 
-                          stroke="#475569" 
-                          fontSize={11} 
-                          tickLine={false} 
-                          axisLine={false}
-                          tickFormatter={(v) => `¥${(v/1000).toFixed(0)}k`}
-                       />
-                       <Tooltip 
-                          contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px' }}
-                          labelStyle={{ color: '#94a3b8', fontSize: '11px', fontWeight: 'cbd5e1' }}
-                          itemStyle={{ fontSize: '12px' }}
-                       />
-                       <Area 
-                          type="monotone" 
-                          dataKey="复利增长总市值" 
-                          stroke="#10b981" 
-                          strokeWidth={2}
-                          fillOpacity={1} 
-                          fill="url(#colorInterest)" 
-                       />
-                       <Area 
-                          type="monotone" 
-                          dataKey="定投累计总本金" 
-                          stroke="#3b82f6" 
-                          strokeWidth={1.5}
-                          fillOpacity={1} 
-                          fill="url(#colorPrincipal)" 
-                       />
-                    </AreaChart>
-                 </ResponsiveContainer>
-              </div>
-           </div>
-        </div>
-      </div>
+      <SipCalculator />
 
       {/* Toast Notification Container */}
       {toast && (
